@@ -15,6 +15,11 @@ function useMessageListener(
       _sender: chrome.runtime.MessageSender,
       sendResponse: (response: MessageResponse) => void,
     ) => {
+      // Other extension contexts own these requests and their responses.
+      if (req.dst !== "PAGE") {
+        return false;
+      }
+
       Promise.resolve(callback(req)).then((res) => {
         if (res) {
           sendResponse(res);

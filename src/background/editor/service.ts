@@ -1,6 +1,5 @@
 import type { EditorStatus, EditorVendorName } from "../../core/data-types";
 import { repository } from "./repository";
-import { sendToActiveTab } from "../../common/message-bus";
 
 const getEditorStatus = async (
   vendorName: EditorVendorName,
@@ -58,51 +57,20 @@ const updateText = async (
   return response;
 };
 
-// backend api에서 커멘드 목록 불러오기
-const command: Record<string, string> = {
-  "/1": "template1",
-  "/2": "template2",
-  "/3": "template3",
-};
-const commandInsertTemplate = async (
-  vendorName: EditorVendorName,
-): Promise<EditorStatus | void> => {
-  const data = await repository.read(vendorName);
-  if (!data) {
-    return;
-  }
-
-  let matchedKey = null;
-  for (let key in command) {
-    if (data.text.startsWith(key)) {
-      matchedKey = key;
-      break;
-    }
-  }
-  if (!matchedKey) {
-    return await getEditorStatus(vendorName);
-  }
-
-  await updateText(vendorName, command[matchedKey], "");
-
-  const res = await sendToActiveTab({
-    src: "BACKGROUND",
-    dst: "CONTENT",
-    path: "/editor/insert-text",
-    method: "PUT",
-    data: { text: command[matchedKey] },
-  });
-  if (!res) {
-    return;
-  }
-
-  return await getEditorStatus(vendorName);
-};
+// Replace this catalog with a backend repository when an API is available.
+const templates = [
+  { id: "1", name: "템플릿 1", command: "/1", text: "template1" },
+  { id: "2", name: "템플릿 2", command: "/2", text: "template2" },
+  { id: "3", name: "템플릿 3", command: "/3", text: "template3" },
+  { id: "4", name: "문의 접수 안내", command: "/4",
+    text: "안녕하세요, {{이름}}님.\n\n{{문의사항}} 문의가 접수되었습니다.\n확인 후 {{이름}}님께 안내드리겠습니다." },
+];
+const listTemplates = () => templates;
 
 export const service = {
   getEditorStatus,
   updateEditorStatus,
   addPrevText,
   updateText,
-  commandInsertTemplate,
+  listTemplates,
 };

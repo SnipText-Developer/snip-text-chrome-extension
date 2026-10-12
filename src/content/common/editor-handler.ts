@@ -1,3 +1,4 @@
+import { startTemplatePopup } from "./template-popup";
 import { EditorMutationObserver } from "./observer/editor-mutation-observer";
 import { EditorPollingObserver } from "./observer/editor-polling-observer";
 import { EditorCombinedObserver } from "./observer/editor-combined-observer";
@@ -61,6 +62,7 @@ function startEditorObserver({
   });
 
   observer.start();
+  startTemplatePopup(selector);
 
   return observer;
 }

@@ -9,6 +9,10 @@ const routing = async (
     return;
   }
 
+  if (req.method === "GET" && req.path === "/editor/templates") {
+    return { statusCode: 200, data: { templates: service.listTemplates() } };
+  }
+
   if (req.method === "GET" && req.path === "/editor/status") {
     if (!req.data || !req.data.vendorName) {
       return {
@@ -38,8 +42,7 @@ const routing = async (
       };
     }
 
-    await service.updateEditorStatus(req.data.vendorName, req.data.status);
-    const result = await service.commandInsertTemplate(req.data.vendorName);
+    const result = await service.updateEditorStatus(req.data.vendorName, req.data.status);
     if (result) {
       await sendMessage({
         src: "BACKGROUND",
