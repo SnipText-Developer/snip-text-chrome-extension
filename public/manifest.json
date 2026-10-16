@@ -15,14 +15,22 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://mail.google.com/*"],
-      "js": ["./src/content/gmail.js"],
+      "matches": [
+        "https://mail.google.com/*"
+      ],
+      "js": [
+        "./src/content/gmail.js"
+      ],
       "type": "module",
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://mail.naver.com/*"],
-      "js": ["./src/content/naver.js"],
+      "matches": [
+        "https://mail.naver.com/*"
+      ],
+      "js": [
+        "./src/content/naver.js"
+      ],
       "type": "module",
       "all_frames": true,
       "match_origin_as_fallback": true,
@@ -34,5 +42,8 @@
   },
   "action": {
     "default_icon": {}
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
   }
 }

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && webpack --config webpack.config.cjs && npm run build:page",
-    "build:page": "npm --prefix src/page run build && mkdir -p dist/src/page && cp -R src/page/dist/. dist/src/page/",
+    "build:page": "npm --prefix src/page run build && node --input-type=module -e \"import {rmSync,cpSync} from 'node:fs'; rmSync('dist/src/page',{recursive:true,force:true}); cpSync('src/page/dist','dist/src/page',{recursive:true});\"",
     "preview": "vite preview"
   },
   "devDependencies": {
