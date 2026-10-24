@@ -62,8 +62,15 @@ const templates = [
   { id: "1", name: "템플릿 1", command: "/1", text: "template1" },
   { id: "2", name: "템플릿 2", command: "/2", text: "template2" },
   { id: "3", name: "템플릿 3", command: "/3", text: "template3" },
-  { id: "4", name: "문의 접수 안내", command: "/4",
-    text: "안녕하세요, {{이름}}님.\n\n{{문의사항}} 문의가 접수되었습니다.\n확인 후 {{이름}}님께 안내드리겠습니다." },
+  {
+    id: "4",
+    name: "문의 접수 안내",
+    command: "/4",
+    text: "안녕하세요, {{이름}}님.\n\n{{문의사항}} 문의가 접수되었습니다.\n확인 후 {{이름}}님께 안내드리겠습니다. {{끝인사말}}",
+  },
+  { id: "5", name: "템플릿 5", command: "/11", text: "template5" },
+  { id: "6", name: "템플릿 6", command: "/111", text: "template6" },
+  { id: "7", name: "템플릿 7", command: "/1111", text: "template7" },
 ];
 const listTemplates = () => templates;
 

@@ -1,5 +1,3 @@
-import { preserveEditorSpaces } from "./editor-whitespace";
-import { getTemplateVariables, renderSmartTemplate } from "./smart-template";
 import { sendMessage } from "../../common/message-bus";
 
 interface Template {
@@ -9,6 +7,34 @@ interface Template {
   text: string;
 }
 
+const variablePattern = /\{\{\s*([^{}]+?)\s*\}\}/g;
+
+export function getTemplateVariables(text: string): string[] {
+  return [
+    ...new Set(
+      [...text.matchAll(variablePattern)].map((match) => match[1].trim()),
+    ),
+  ];
+}
+
+export function renderSmartTemplate(
+  text: string,
+  values: ReadonlyMap<string, string>,
+): string {
+  return text.replace(
+    variablePattern,
+    (placeholder, field: string) => values.get(field.trim()) ?? placeholder,
+  );
+}
+
+// HTML editors can collapse consecutive spaces and hide line-edge spaces.
+// Keep ordinary single word separators so text can still wrap naturally.
+export function preserveEditorSpaces(text: string): string {
+  return text
+    .replace(/\r\n/g, "\n")
+    .replace(/^ +| +$| {2,}/gm, (spaces) => "\u00a0".repeat(spaces.length));
+}
+
 // One controller per content-script document; delegated events also cover new editors.
 export function startTemplatePopup(selector: string): void {
   const host = document.createElement("div");
@@ -16,41 +42,66 @@ export function startTemplatePopup(selector: string): void {
   const style = document.createElement("style");
   style.textContent = `
     :host { all: initial; position: fixed; z-index: 2147483647; display: none; }
-    .popup { box-sizing: border-box; width: 280px; max-width: calc(100vw - 16px);
-      background: white; color: #202124; border: 1px solid #e1e3e7; border-radius: 10px;
-      box-shadow: 0 6px 24px #0002; font: 13px/1.5 system-ui, sans-serif; overflow: hidden; }
-    header, footer { padding: 8px 12px; color: #6b7280; font-size: 11px; }
-    header { font-weight: 600; border-bottom: 1px solid #eee; }
-    .list { max-height: 180px; overflow-y: auto; }
-    .list.variables { max-height: min(360px, calc(100vh - 100px)); }
-    .preview-title { margin: 0 0 4px; font-size: 11px; color: #6b7280; }
-    .preview { margin: 0; padding: 8px; max-height: 120px; overflow-y: auto;
-      border: 1px solid #e1e3e7; border-radius: 6px; background: #f8fafc;
-      white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+    .popup { box-sizing: border-box; display: flex; flex-direction: column;
+      width: 16.25rem; max-width: calc(100vw - 1rem); max-height: calc(100vh - 1rem);
+      background: #FFFFFF; color: #171c26; border: 0; border-radius: 0.625rem;
+      box-shadow: 0 0.375rem 1.5rem #0002; font: 0.8125rem/1.5 system-ui, sans-serif; overflow: hidden; }
+    .popup.variable-entry { width: 17.5rem; }
+    header, footer { flex-shrink: 0; }
+    header { padding: 0.875rem 1rem 0.75rem; color: #171c26; font-size: 0.875rem;
+      line-height: 1.4; font-weight: 600; overflow-wrap: anywhere; border-bottom: 0.0625rem solid #ededed; }
+    footer { margin: 0 1rem; border-top: 0.0625rem solid #d9d9d9; }
+    footer[hidden] { display: none; }
+    footer.variables-footer { padding: 0.5625rem 0; color: #737373; font-size: 0.6875rem; line-height: 1.5; }
+    .list { flex: 1; min-height: 0; max-height: 11.25rem; overflow-y: auto; }
+    .list.variables { max-height: min(22.5rem, calc(100vh - 10rem)); }
+    .list[role="listbox"] { padding: 0.625rem; scroll-padding-block: 0.625rem; }
+    .section-title { margin: 0 0 0.625rem; font-size: 0.75rem; line-height: 1.5;
+      font-weight: 600; color: #525252; }
+    .preview-section { padding-top: 0.875rem; border-top: 0.0625rem solid #ededed; }
+    .preview { margin: 0; padding: 0.625rem 0.75rem; max-height: 7.5rem; overflow-y: auto;
+      border: 0.0625rem solid #d9d9d9; border-radius: 0.625rem; background: #f5f5f5;
+      white-space: pre-wrap; overflow-wrap: anywhere; font: 0.75rem/1.7 system-ui, sans-serif; }
     button { display: block; border: 0; background: white; color: inherit; width: 100%;
-      text-align: left; cursor: pointer; padding: 8px 12px; font: inherit; }
-    button[aria-selected="true"] { background: #eef2ff; color: #4338ca; }
-    small { display: block; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .message { padding: 12px; color: #6b7280; }
-    form { padding: 12px; display: grid; gap: 10px; }
-    label { display: grid; gap: 4px; }
-    input { box-sizing: border-box; width: 100%; border: 1px solid #d1d5db;
-      border-radius: 6px; padding: 7px 8px; font: inherit; color: #202124; background: white; }
-    input:focus { outline: 2px solid #818cf8; outline-offset: 1px; }
-    .actions { display: flex; gap: 8px; }
-    .actions button { text-align: center; border: 1px solid #d1d5db; border-radius: 6px; }
-    .actions button[type="submit"] { background: #4338ca; color: white; border-color: #4338ca; }
+      text-align: left; cursor: pointer; padding: 0.5rem 0.75rem; font: inherit; }
+    button[aria-selected="true"] { background: #d9d9d9; }
+    button[role="option"] { box-sizing: border-box; display: grid;
+      grid-template-columns: 3.5rem minmax(0, 1fr); align-items: center; gap: 0.5rem;
+      height: 2.25rem; padding: 0 0.625rem; border-radius: 0.625rem; }
+    .template-command { overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      font-size: 0.8125rem; font-weight: 600; }
+    .template-text { min-width: 0; overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap; color: #596375; font-size: 0.75rem; }
+    .message { padding: 0.75rem; color: #6b7280; }
+    form { padding: 0.875rem 1rem 0; display: grid; gap: 1rem; }
+    .fields { display: grid; gap: 0.75rem; }
+    label { display: grid; gap: 0.375rem; color: #525252; font-size: 0.75rem;
+      font-weight: 500; overflow-wrap: anywhere; }
+    input { box-sizing: border-box; width: 100%; border: 0.0625rem solid #d9d9d9;
+      border-radius: 0.625rem; padding: 0.5625rem 0.625rem; font: 0.8125rem/1.5 system-ui, sans-serif;
+      color: #171c26; background: #f5f5f5; }
+    input::placeholder { color: #737373; }
+    input:focus { background: #fff; border-color: #737373;
+      outline: 0.125rem solid #737373; outline-offset: 0.0625rem; }
+    .actions { display: flex; gap: 0.5rem; position: sticky; bottom: 0;
+      padding: 0.75rem 0; border-top: 0.0625rem solid #ededed; background: #fff; }
+    .actions button { text-align: center; border: 0.0625rem solid #d9d9d9; border-radius: 0.625rem;
+      background: #f5f5f5; color: #171c26; min-height: 2.25rem; font-size: 0.75rem; font-weight: 600; }
+    .actions button:hover { background: #e5e5e5; }
+    .actions button:focus-visible { outline: 0.125rem solid #737373; outline-offset: 0.0625rem; }
+    .actions button[type="submit"] { background: #171c26; color: #fff; border-color: #171c26; }
+    .actions button[type="submit"]:hover { background: #343a46; border-color: #343a46; }
   `;
   const popup = document.createElement("div");
   popup.className = "popup";
   const header = document.createElement("header");
-  header.textContent = "스마트 템플릿";
+  header.textContent = "템플릿";
   const list = document.createElement("div");
   list.className = "list";
   list.setAttribute("role", "listbox");
-  list.setAttribute("aria-label", "스마트 템플릿");
+  list.setAttribute("aria-label", "템플릿");
   const footer = document.createElement("footer");
-  footer.textContent = "↑↓ 선택 · Enter 삽입 · Esc 닫기";
+  footer.hidden = true;
   popup.append(header, list, footer);
   shadow.append(style, popup);
   document.documentElement.append(host);
@@ -79,8 +130,12 @@ export function startTemplatePopup(selector: string): void {
     const width = popup.getBoundingClientRect().width;
     const height = popup.getBoundingClientRect().height;
     host.style.left = `${Math.max(8, Math.min(anchor.left, window.innerWidth - width - 8))}px`;
-    host.style.top = `${Math.max(8, anchor.bottom + height + 6 <= window.innerHeight
-      ? anchor.bottom + 6 : anchor.top - height - 6)}px`;
+    host.style.top = `${Math.max(
+      8,
+      anchor.bottom + height + 6 <= window.innerHeight
+        ? anchor.bottom + 6
+        : anchor.top - height - 6,
+    )}px`;
   }
 
   function choose(template: Template) {
@@ -88,13 +143,25 @@ export function startTemplatePopup(selector: string): void {
     const variables = getTemplateVariables(template.text);
     if (!variables.length) return insertText(template.text);
     enteringVariables = true;
+    popup.classList.add("variable-entry");
     generation++;
     header.textContent = template.name;
+    footer.classList.add("variables-footer");
+    footer.hidden = false;
     footer.textContent = "변수 입력 후 삽입 · Esc 취소";
     list.removeAttribute("role");
     list.classList.add("variables");
     list.replaceChildren();
     const form = document.createElement("form");
+    const fieldsSection = document.createElement("section");
+    fieldsSection.setAttribute("aria-label", "변수 입력");
+    const fieldsTitle = document.createElement("h4");
+    fieldsTitle.className = "section-title";
+    fieldsTitle.textContent = "변수 입력";
+    const fields = document.createElement("div");
+    fields.className = "fields";
+    fieldsSection.append(fieldsTitle, fields);
+    form.append(fieldsSection);
     const inputs = new Map<string, HTMLInputElement>();
     for (const variable of variables) {
       const label = document.createElement("label");
@@ -103,15 +170,19 @@ export function startTemplatePopup(selector: string): void {
       input.type = "text";
       input.placeholder = `${variable} 입력`;
       label.append(input);
-      form.append(label);
+      fields.append(label);
       inputs.set(variable, input);
     }
-    const getRenderedText = () => renderSmartTemplate(template.text,
-      new Map([...inputs].map(([key, input]) => [key, input.value])));
+    const getRenderedText = () =>
+      renderSmartTemplate(
+        template.text,
+        new Map([...inputs].map(([key, input]) => [key, input.value])),
+      );
     const previewSection = document.createElement("section");
+    previewSection.className = "preview-section";
     previewSection.setAttribute("aria-label", "삽입할 텍스트 미리보기");
     const previewTitle = document.createElement("h4");
-    previewTitle.className = "preview-title";
+    previewTitle.className = "section-title";
     previewTitle.textContent = "미리보기";
     const preview = document.createElement("pre");
     preview.className = "preview";
@@ -133,7 +204,7 @@ export function startTemplatePopup(selector: string): void {
     submit.textContent = "삽입";
     actions.append(cancel, submit);
     form.append(actions);
-    form.addEventListener("submit", event => {
+    form.addEventListener("submit", (event) => {
       event.preventDefault();
       if (composing) return;
       insertText(getRenderedText());
@@ -175,15 +246,22 @@ export function startTemplatePopup(selector: string): void {
       range.collapse(true);
       selection?.removeAllRanges();
       selection?.addRange(range);
-      target.dispatchEvent(new InputEvent("input", {
-        bubbles: true, inputType: "insertText", data: insertionText,
-      }));
+      target.dispatchEvent(
+        new InputEvent("input", {
+          bubbles: true,
+          inputType: "insertText",
+          data: insertionText,
+        }),
+      );
     }
   }
 
   function render(message?: string) {
-    header.textContent = "스마트 템플릿";
-    footer.textContent = "↑↓ 선택 · Enter 삽입 · Esc 닫기";
+    popup.classList.remove("variable-entry");
+    header.textContent = "템플릿";
+    footer.classList.remove("variables-footer");
+    footer.replaceChildren();
+    footer.hidden = true;
     list.setAttribute("role", "listbox");
     list.classList.remove("variables");
     list.replaceChildren();
@@ -198,26 +276,51 @@ export function startTemplatePopup(selector: string): void {
         button.type = "button";
         button.setAttribute("role", "option");
         button.setAttribute("aria-selected", String(index === active));
-        button.textContent = `${template.name}  ${template.command}`;
-        const preview = document.createElement("small");
-        preview.textContent = template.text;
-        button.append(preview);
-        button.addEventListener("mousedown", event => event.preventDefault());
+        button.setAttribute(
+          "aria-label",
+          `${template.command} ${template.name}`,
+        );
+        const command = document.createElement("span");
+        command.className = "template-command";
+        command.textContent = template.command;
+        const preview = document.createElement("span");
+        preview.className = "template-text";
+        preview.textContent = template.text.replace(/\s+/g, " ");
+        button.title = template.text;
+        button.append(command, preview);
+        button.addEventListener("pointermove", () => {
+          if (active === index) return;
+          active = index;
+          list
+            .querySelectorAll('[role="option"]')
+            .forEach((option, optionIndex) => {
+              option.setAttribute(
+                "aria-selected",
+                String(optionIndex === active),
+              );
+            });
+        });
+        button.addEventListener("mousedown", (event) => event.preventDefault());
         button.addEventListener("click", () => choose(template));
         list.append(button);
       });
-      list.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
+      list
+        .querySelector('[aria-selected="true"]')
+        ?.scrollIntoView({ block: "nearest" });
     }
     position();
   }
 
   async function update() {
-    if (composing || enteringVariables || document.activeElement === host) return;
+    if (composing || enteringVariables || document.activeElement === host)
+      return;
     const selection = window.getSelection();
     if (!selection?.isCollapsed || !selection.rangeCount) return close();
     const caret = selection.getRangeAt(0);
-    const element = caret.startContainer.nodeType === Node.ELEMENT_NODE
-      ? caret.startContainer as Element : caret.startContainer.parentElement;
+    const element =
+      caret.startContainer.nodeType === Node.ELEMENT_NODE
+        ? (caret.startContainer as Element)
+        : caret.startContainer.parentElement;
     editor = element?.closest<HTMLElement>(selector) ?? null;
     if (!editor || document.activeElement !== editor) return close();
     const prefix = caret.cloneRange();
@@ -247,37 +350,54 @@ export function startTemplatePopup(selector: string): void {
       filtered = [];
       render("템플릿 불러오는 중…");
       const response = await sendMessage({
-        src: "CONTENT", dst: "BACKGROUND", method: "GET", path: "/editor/templates", data: {},
+        src: "CONTENT",
+        dst: "BACKGROUND",
+        method: "GET",
+        path: "/editor/templates",
+        data: {},
       });
       if (current !== generation) return;
-      if (response?.statusCode !== 200 || !Array.isArray(response.data?.templates)) {
+      if (
+        response?.statusCode !== 200 ||
+        !Array.isArray(response.data?.templates)
+      ) {
         render("템플릿을 불러오지 못했습니다. 다시 입력해주세요.");
         return;
       }
       templates = response.data.templates as Template[];
     }
     const query = match[2].toLocaleLowerCase();
-    filtered = templates.filter(template =>
-      `${template.name} ${template.command} ${template.text}`.toLocaleLowerCase().includes(query));
+    filtered = templates.filter((template) =>
+      `${template.name} ${template.command} ${template.text}`
+        .toLocaleLowerCase()
+        .includes(query),
+    );
     render();
   }
 
   // Keep editor/field focus when clicking popup chrome, previews, or buttons.
   // Inputs and their labels retain native focus and text-selection behavior.
-  popup.addEventListener("mousedown", event => {
+  popup.addEventListener("mousedown", (event) => {
     const target = event.target;
     if (!(target instanceof Element) || !target.closest("input, label")) {
       event.preventDefault();
     }
   });
 
-  document.addEventListener("input", () => { void update(); });
-  document.addEventListener("selectionchange", () => { void update(); });
+  document.addEventListener("input", () => {
+    void update();
+  });
+  document.addEventListener("selectionchange", () => {
+    void update();
+  });
   document.addEventListener("compositionstart", () => {
     composing = true;
     if (!enteringVariables) close();
   });
-  document.addEventListener("compositionend", () => { composing = false; void update(); });
+  document.addEventListener("compositionend", () => {
+    composing = false;
+    void update();
+  });
   // Intercept popup keys before the mail page's document handlers. Stopping
   // propagation preserves native input, IME, Tab navigation, and form submission.
   const stopPopupKeyPropagation = (event: KeyboardEvent) => {
@@ -285,28 +405,42 @@ export function startTemplatePopup(selector: string): void {
   };
   window.addEventListener("keypress", stopPopupKeyPropagation, true);
   window.addEventListener("keyup", stopPopupKeyPropagation, true);
-  window.addEventListener("keydown", event => {
-    stopPopupKeyPropagation(event);
-    if (!trigger || composing || event.isComposing) return;
-    if (enteringVariables) {
+  window.addEventListener(
+    "keydown",
+    (event) => {
+      stopPopupKeyPropagation(event);
+      if (!trigger || composing || event.isComposing) return;
+      if (enteringVariables) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          cancelVariables();
+        }
+        return;
+      }
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopImmediatePropagation();
-        cancelVariables();
+        close();
+      } else if (
+        (event.key === "ArrowDown" || event.key === "ArrowUp") &&
+        filtered.length
+      ) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        active =
+          (active + (event.key === "ArrowDown" ? 1 : -1) + filtered.length) %
+          filtered.length;
+        render();
+      } else if (event.key === "Enter" && filtered.length && !event.shiftKey) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        choose(filtered[active]);
       }
-      return;
-    }
-    if (event.key === "Escape") {
-      event.preventDefault(); event.stopImmediatePropagation(); close();
-    } else if ((event.key === "ArrowDown" || event.key === "ArrowUp") && filtered.length) {
-      event.preventDefault(); event.stopImmediatePropagation();
-      active = (active + (event.key === "ArrowDown" ? 1 : -1) + filtered.length) % filtered.length;
-      render();
-    } else if (event.key === "Enter" && filtered.length && !event.shiftKey) {
-      event.preventDefault(); event.stopImmediatePropagation(); choose(filtered[active]);
-    }
-  }, true);
-  document.addEventListener("mousedown", event => {
+    },
+    true,
+  );
+  document.addEventListener("mousedown", (event) => {
     if (!event.composedPath().includes(host)) close();
   });
   document.addEventListener("focusout", () => {
