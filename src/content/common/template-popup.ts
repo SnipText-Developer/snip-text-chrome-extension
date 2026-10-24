@@ -58,10 +58,6 @@ export function startTemplatePopup(selector: string): void {
     .list[role="listbox"] { padding: 0.625rem; scroll-padding-block: 0.625rem; }
     .section-title { margin: 0 0 0.625rem; font-size: 0.75rem; line-height: 1.5;
       font-weight: 600; color: #525252; }
-    .preview-section { padding-top: 0.875rem; border-top: 0.0625rem solid #ededed; }
-    .preview { margin: 0; padding: 0.625rem 0.75rem; max-height: 7.5rem; overflow-y: auto;
-      border: 0.0625rem solid #d9d9d9; border-radius: 0.625rem; background: #f5f5f5;
-      white-space: pre-wrap; overflow-wrap: anywhere; font: 0.75rem/1.7 system-ui, sans-serif; }
     button { display: block; border: 0; background: white; color: inherit; width: 100%;
       text-align: left; cursor: pointer; padding: 0.5rem 0.75rem; font: inherit; }
     button[aria-selected="true"] { background: #d9d9d9; }
@@ -79,11 +75,11 @@ export function startTemplatePopup(selector: string): void {
       font-weight: 500; overflow-wrap: anywhere; }
     input { box-sizing: border-box; width: 100%; border: 0.0625rem solid #d9d9d9;
       border-radius: 0.625rem; padding: 0.5625rem 0.625rem; font: 0.8125rem/1.5 system-ui, sans-serif;
-      color: #171c26; background: #f5f5f5; }
+      color: #171c26; background: #fff; }
     input::placeholder { color: #737373; }
     input:focus { background: #fff; border-color: #737373;
       outline: 0.125rem solid #737373; outline-offset: 0.0625rem; }
-    .actions { display: flex; gap: 0.5rem; position: sticky; bottom: 0;
+    .actions { display: flex; gap: 0.5rem;
       padding: 0.75rem 0; border-top: 0.0625rem solid #ededed; background: #fff; }
     .actions button { text-align: center; border: 0.0625rem solid #d9d9d9; border-radius: 0.625rem;
       background: #f5f5f5; color: #171c26; min-height: 2.25rem; font-size: 0.75rem; font-weight: 600; }
@@ -178,21 +174,6 @@ export function startTemplatePopup(selector: string): void {
         template.text,
         new Map([...inputs].map(([key, input]) => [key, input.value])),
       );
-    const previewSection = document.createElement("section");
-    previewSection.className = "preview-section";
-    previewSection.setAttribute("aria-label", "삽입할 텍스트 미리보기");
-    const previewTitle = document.createElement("h4");
-    previewTitle.className = "section-title";
-    previewTitle.textContent = "미리보기";
-    const preview = document.createElement("pre");
-    preview.className = "preview";
-    preview.textContent = getRenderedText();
-    form.addEventListener("input", () => {
-      preview.textContent = getRenderedText();
-      position();
-    });
-    previewSection.append(previewTitle, preview);
-    form.append(previewSection);
     const actions = document.createElement("div");
     actions.className = "actions";
     const cancel = document.createElement("button");
