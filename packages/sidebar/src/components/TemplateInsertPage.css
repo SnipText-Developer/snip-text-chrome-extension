@@ -1,0 +1,25 @@
+.template-insert-page { padding: 4px 0 8px; }
+.template-insert-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.template-insert-header h2 { margin: 0; font-size: 18px; line-height: 1.4; letter-spacing: -0.3px; overflow-wrap: anywhere; }
+.template-insert-shortcut { display: inline-block; margin-top: 6px; padding: 3px 10px; border-radius: 8px; background: #e3e3e3; color: #000; font-size: 13px; overflow-wrap: anywhere; }
+.template-insert-close { display: grid; place-items: center; flex-shrink: 0; width: 32px; height: 32px; padding: 4px; border-radius: 8px; color: #8b8f9f; background: transparent; }
+.template-insert-close:hover:enabled { background: #f3f4f6; }
+.template-insert-close svg { width: 24px; height: 24px; }
+.template-insert-preview { margin-top: 16px; padding: 14px; border-radius: 16px; background: #ebebeb; color: #596174; font-size: 13px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.template-insert-form { margin-top: 16px; }
+.template-insert-fields { display: grid; gap: 14px; }
+.template-insert-fields label { display: grid; gap: 8px; color: #171c27; font-size: 13px; font-weight: 650; overflow-wrap: anywhere; }
+.template-insert-fields input { box-sizing: border-box; width: 100%; min-width: 0; padding: 8px 10px; border: 1px solid #ccc; border-radius: 10px; background: #fff; color: #171c27; font-size: 13px; font-weight: 400; line-height: 1.5; }
+.template-insert-fields input::placeholder { color: #8b8f9f; }
+.template-insert-fields input:focus { outline: none; border-color: #171c27; box-shadow: 0 0 0 1px #171c27; }
+.template-insert-footer { display: flex; justify-content: flex-end; margin-top: 16px; }
+.template-insert-footer button { max-width: 100%; padding: 8px 14px; border-radius: 10px; background: #000; color: #fff; font-size: 13px; font-weight: 700; line-height: 1.5; }
+@media (max-width: 520px) {
+  .template-insert-page { padding: 4px 0 8px; }
+  .template-insert-header h2 { font-size: 18px; letter-spacing: -0.5px; }
+  .template-insert-shortcut { font-size: 13px; }
+  .template-insert-preview { margin-top: 18px; padding: 14px; border-radius: 12px; font-size: 13px; }
+  .template-insert-form { margin-top: 16px; }
+  .template-insert-fields { gap: 16px; }
+  .template-insert-footer { margin-top: 16px; }
+}

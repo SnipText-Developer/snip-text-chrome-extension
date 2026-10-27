@@ -25,14 +25,30 @@ export function TemplatePopup({ selector, getTemplates, host, shadow }: Props) {
         <div
           ref={popup}
           className={selected ? "popup variable-entry" : "popup"}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            if (!(event.target instanceof Element) || !event.target.closest("input, button")) {
+              event.preventDefault();
+            }
+          }}
           onMouseDown={(event) => {
+            event.stopPropagation();
             const target = event.target;
-            if (!(target instanceof Element) || !target.closest("input, label")) event.preventDefault();
+            if (!(target instanceof Element)) {
+              event.preventDefault();
+              return;
+            }
+            if (target.closest("input")) return;
+
+            // Prevent text selection and native label clicks from moving focus
+            // outside the popup before the click handler runs.
+            event.preventDefault();
           }}
           onKeyDown={(event) => event.stopPropagation()}
           onKeyPress={(event) => event.stopPropagation()}
           onKeyUp={(event) => event.stopPropagation()}>
-          <header>{selected?.title ?? "템플릿"}</header>
+          <header>{selected ? `${selected.shortcut} 변수 입력` : "템플릿"}</header>
           {selected ? (
             <TemplateVariablesForm
               key={selected.templateId}

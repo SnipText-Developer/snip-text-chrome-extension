@@ -1,18 +1,31 @@
-import { useEffect, useState } from "react";
+import { getTemplateVariables } from "@snip-text/template-popup";
+import TemplateInsertPage from "./TemplateInsertPage";
+import { useContext, useEffect, useState } from "react";
 import { sendMessage } from "../common/sendMessage";
 import { pageConfig } from "../config";
-
+import TemplateEmptyState from "./TemplateEmptyState";
+import { EditorStatusContext } from "../context/editorStatusContext";
 import type { Template } from "../core/data-types";
 
 function TemplateListPage() {
+  const editorState = useContext(EditorStatusContext);
+  const isEditorEditable = Object.values(editorState?.statuses ?? {}).some(
+    (status) => status?.isEditable === true,
+  );
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [notice, setNotice] = useState("");
   const [inserting, setInserting] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
+    null,
+  );
+
   useEffect(() => {
     let alive = true;
+    let generation = 0;
     async function load() {
+      const current = ++generation;
       try {
         const response = await sendMessage({
           src: "PAGE",
@@ -21,44 +34,58 @@ function TemplateListPage() {
           method: "GET",
           data: {},
         });
-        if (!alive) return;
-        if (response?.statusCode !== 200 || !Array.isArray(response.data?.templates)) {
+        if (!alive || current !== generation) return;
+        if (
+          response?.statusCode !== 200 ||
+          !Array.isArray(response.data?.templates)
+        ) {
           throw new Error("템플릿 조회 실패");
         }
         setTemplates(response.data.templates);
       } catch {
-        if (alive) setNotice("템플릿을 불러오지 못했습니다. 확장 프로그램에서 다시 열어주세요.");
+        if (alive)
+          setNotice(
+            "템플릿을 불러오지 못했습니다. 확장 프로그램에서 다시 열어주세요.",
+          );
       } finally {
         if (alive) setLoading(false);
       }
     }
+
+    const handleStorageChange = (_changes: unknown, area: string) => {
+      if (area === "local") void load();
+    };
+    chrome.storage.onChanged.addListener(handleStorageChange);
     void load();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+      chrome.storage.onChanged.removeListener(handleStorageChange);
+    };
   }, []);
 
-  function openNewTemplate() {
+  function openConfiguredPage(address: string, label: string) {
     try {
-      const url = new URL(pageConfig.newTemplateUrl.trim());
+      const url = new URL(address.trim());
       if (url.protocol !== "https:" && url.protocol !== "http:") {
         throw new Error("지원하지 않는 URL입니다.");
       }
       window.location.assign(url.href);
     } catch {
-      setNotice("새 템플릿 URL을 올바른 HTTP 또는 HTTPS 주소로 설정해주세요.");
+      setNotice(`${label} URL을 올바른 HTTP 또는 HTTPS 주소로 설정해주세요.`);
     }
   }
 
-  async function copy(text: string) {
+  async function copy(item: Template) {
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(item.content);
       setNotice("복사했습니다.");
     } catch {
       setNotice("복사하지 못했습니다. 텍스트를 직접 선택해 복사해주세요.");
     }
   }
 
-  async function insert(item: Template) {
-    if (inserting) return;
+  async function insert(item: Template, content = item.content) {
+    if (inserting || !isEditorEditable) return;
     setInserting(true);
     setNotice("");
     try {
@@ -67,36 +94,71 @@ function TemplateListPage() {
         dst: "BACKGROUND",
         path: "/editor/insert-text",
         method: "PUT",
-        data: { text: item.content },
+        data: { text: content },
       });
-      setNotice(
-        response?.statusCode === 200
-          ? "메일 본문에 삽입했습니다."
-          : "Gmail 또는 네이버 메일의 작성 창을 열고 다시 시도해주세요.",
-      );
+      if (response?.statusCode === 200) {
+        setSelectedTemplate(null);
+      } else {
+        setNotice("Gmail 또는 네이버 메일의 작성 창을 열고 다시 시도해주세요.");
+      }
     } catch {
-      setNotice("삽입하지 못했습니다. 메일 작성 창을 확인하고 다시 시도해주세요.");
+      setNotice(
+        "삽입하지 못했습니다. 메일 작성 창을 확인하고 다시 시도해주세요.",
+      );
     } finally {
       setInserting(false);
     }
   }
 
-  const visibleTemplates = templates
-    .filter((item) =>
-      `${item.title} ${item.content} ${item.shortcut ?? ""}`
-        .toLowerCase()
-        .includes(query.trim().toLowerCase()),
+  function requestInsert(item: Template) {
+    if (inserting || !isEditorEditable) return;
+    setNotice("");
+    if (getTemplateVariables(item.content).length) setSelectedTemplate(item);
+    else void insert(item);
+  }
+
+  const visibleTemplates = templates.filter((item) =>
+    `${item.title} ${item.content} ${item.shortcut ?? ""}`
+      .toLowerCase()
+      .includes(query.trim().toLowerCase()),
+  );
+
+  if (selectedTemplate) {
+    return (
+      <TemplateInsertPage
+        key={selectedTemplate.templateId}
+        template={selectedTemplate}
+        busy={inserting}
+        editable={isEditorEditable}
+        notice={notice}
+        onClose={() => {
+          setSelectedTemplate(null);
+          setNotice("");
+        }}
+        onInsert={(content) => void insert(selectedTemplate, content)}
+      />
     );
+  }
 
   return (
     <>
-      <section className="templates" aria-label="템플릿 목록" aria-busy={loading}>
+      <section
+        className="templates"
+        aria-label="템플릿 목록"
+        aria-busy={loading}>
         <div className="search-field">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            aria-hidden="true">
             <circle cx="10.5" cy="10.5" r="7" />
             <path d="m16 16 5 5" />
           </svg>
-          <label className="sr-only" htmlFor="search">템플릿 검색</label>
+          <label className="sr-only" htmlFor="search">
+            템플릿 검색
+          </label>
           <input
             id="search"
             type="search"
@@ -107,10 +169,30 @@ function TemplateListPage() {
         </div>
         <div className="template-toolbar">
           <button
-            className="new-template"
+            type="button"
+            className="template-action tone-correction"
+            disabled={!pageConfig.toneCorrectionUrl.trim()}
+            title={
+              pageConfig.toneCorrectionUrl.trim()
+                ? "AI 톤교정 페이지로 이동"
+                : "config.ts에서 AI 톤교정 URL을 설정해주세요."
+            }
+            onClick={() =>
+              openConfiguredPage(pageConfig.toneCorrectionUrl, "AI 톤교정")
+            }>
+            AI 톤교정
+          </button>
+          <button
+            className="template-action new-template"
             disabled={!pageConfig.newTemplateUrl.trim()}
-            title={pageConfig.newTemplateUrl.trim() ? "새 템플릿 페이지로 이동" : "config.ts에서 새 템플릿 URL을 설정해주세요."}
-            onClick={openNewTemplate}>
+            title={
+              pageConfig.newTemplateUrl.trim()
+                ? "새 템플릿 페이지로 이동"
+                : "config.ts에서 새 템플릿 URL을 설정해주세요."
+            }
+            onClick={() =>
+              openConfiguredPage(pageConfig.newTemplateUrl, "새 템플릿")
+            }>
             <span aria-hidden="true">＋</span> 새 템플릿
           </button>
         </div>
@@ -118,25 +200,36 @@ function TemplateListPage() {
           {loading ? (
             <p className="empty">템플릿을 불러오는 중입니다.</p>
           ) : !visibleTemplates.length ? (
-            <p className="empty">
-              {query.trim() ? "검색 결과가 없습니다." : "등록된 템플릿이 없습니다."}
-            </p>
-          ) : visibleTemplates.map((item) => (
-            <article className="template-card" key={item.templateId}>
-              {item.shortcut && <p className="template-command">{item.shortcut}</p>}
-              <h2>{item.title}</h2>
-              <p className="template-preview">{item.content}</p>
-              <div className="card-actions">
-                <button onClick={() => void copy(item.content)}>복사</button>
-                <button disabled={inserting} onClick={() => void insert(item)}>
-                  메일 본문에 삽입
-                </button>
-              </div>
-            </article>
-          ))}
+            <TemplateEmptyState searching={Boolean(query.trim())} />
+          ) : (
+            visibleTemplates.map((item) => (
+              <article className="template-card" key={item.templateId}>
+                {item.shortcut && (
+                  <p className="template-command">{item.shortcut}</p>
+                )}
+                <h2>{item.title}</h2>
+                <p className="template-preview">{item.content}</p>
+                <div className="card-actions">
+                  <button onClick={() => void copy(item)}>복사</button>
+                  <button
+                    disabled={!isEditorEditable}
+                    title={
+                      isEditorEditable
+                        ? "메일 본문에 삽입"
+                        : "메일 작성 창을 열어주세요."
+                    }
+                    onClick={() => requestInsert(item)}>
+                    메일 본문에 삽입
+                  </button>
+                </div>
+              </article>
+            ))
+          )}
         </div>
       </section>
-      <p className="notice" role="status" aria-live="polite">{notice}</p>
+      <p className="notice" role="status" aria-live="polite">
+        {notice}
+      </p>
     </>
   );
 }

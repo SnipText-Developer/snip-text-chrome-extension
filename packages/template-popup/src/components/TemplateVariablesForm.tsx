@@ -29,11 +29,10 @@ export function TemplateVariablesForm({ template, onCancel, onInsert, isComposin
           onInsert(content);
         }}>
         <section aria-label="변수 입력">
-          <h4 className="section-title">변수 입력</h4>
           <div className="fields">
             {template.variables.map((variable, index) => (
               <label key={variable}>
-                {variable}
+                <span>{variable}</span>
                 <input
                   ref={index === 0 ? firstInput : undefined}
                   type="text"

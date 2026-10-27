@@ -115,7 +115,13 @@ export function useTemplatePopup(selector: string, getTemplates: StartPopupOptio
     }
     function onFocusOut() {
       queueMicrotask(() => {
-        if (!disposed && document.activeElement !== anchor.current?.editor && !shadow.activeElement) close();
+        if (disposed) return;
+        const activeElement = document.activeElement;
+        const editorElement = anchor.current?.editor;
+        const focusedInEditor = activeElement === editorElement ||
+          (activeElement !== null && editorElement?.contains(activeElement));
+        const focusedInPopup = activeElement === host || shadow.activeElement !== null;
+        if (!focusedInEditor && !focusedInPopup) close();
       });
     }
     actions.current = { choose, select, cancel, insert };

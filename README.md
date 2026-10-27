@@ -102,7 +102,7 @@ vendor는 `google` 또는 `naver`입니다. 허용되지 않은 발신자는 응
 
 만료 시각은 epoch 밀리초이며, 지정하지 않으면 최대 5분 보관합니다. 더 짧은 만료 시각을 지정할 수 있습니다. 만료·워커 종료 시 제거되며 자동 갱신하지 않습니다.
 
-기존 저장 템플릿은 조회 시 새 스키마로 변환합니다. 과거 날짜 정보가 없는 경우 `1970-01-01T00:00:00.000Z`를 사용합니다. 템플릿은 background에서 전달한 순서대로 표시합니다.
+기존 저장 템플릿은 조회 시 새 스키마로 변환합니다. 과거 날짜 정보가 없는 경우 `1970-01-01T00:00:00.000Z`를 사용합니다. 사이드바는 background에서 받은 순서대로 템플릿을 표시합니다.
 
 새 템플릿 버튼의 이동 주소는 `packages/sidebar/src/config.ts`의 `pageConfig.newTemplateUrl`에 전체 HTTP(S) URL로 지정합니다. 설정 후 다시 빌드하면 버튼 클릭 시 현재 페이지가 해당 URL로 이동합니다. 주소가 비어 있으면 버튼을 비활성화합니다.
 
@@ -137,3 +137,9 @@ React와 React DOM은 peer dependency입니다. 스타일은 번들에 포함되
 사이드바 React 앱은 `packages/sidebar`의 npm workspace 패키지 `@snip-text/sidebar`에서 관리합니다. 개발은 `npm run dev`, 린트는 `npm --workspace @snip-text/sidebar run lint`, 빌드는 `npm run build:sidebar`를 사용합니다. 전체 빌드에도 포함됩니다.
 
 사이드바의 결과물은 확장 프로그램의 기존 `dist/src/page/`에 복사합니다. manifest의 사이드바 경로와 background의 PAGE 발신자 검증 URL은 그대로 사용합니다. 의존성은 루트 `package-lock.json`으로 관리합니다.
+
+템플릿 복사·메일 삽입에 성공하면 `PUT /template/use`에 `{ templateId }`를 보내 `lastUsedAt`을 갱신합니다. `editedAt`은 유지합니다. 단축어 팝업도 `startPopup`의 `onInserted` 콜백으로 같은 경로를 호출합니다. 사이드바는 저장소 변경 시 background에서 목록을 다시 조회하여 정렬을 반영합니다.
+
+사이드바 검색창 아래에는 ‘AI 톤교정’, ‘새 템플릿’ 버튼을 표시합니다. 이동 주소는 `packages/sidebar/src/config.ts`의 `toneCorrectionUrl`, `newTemplateUrl`에 지정하며, 설정하지 않은 버튼은 비활성화합니다.
+
+사이드바에서 `{{변수}}`가 있는 템플릿의 삽입 버튼을 누르면 변수 입력 화면을 표시합니다. 본문의 변수명을 중복 없이 추출하고 미리보기를 실시간 갱신합니다. ‘메일 본문에 삽입’으로 치환된 본문을 삽입하며 빈 입력값은 빈 문자열로 처리합니다. 닫기·Esc는 삽입 없이 목록으로 돌아가며, 실패 시 입력값을 유지합니다. 에디터가 입력 불가 상태이면 삽입 버튼도 비활성화됩니다.

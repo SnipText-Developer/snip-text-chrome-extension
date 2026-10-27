@@ -118,6 +118,36 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   await act(async () => { key(editor, "ArrowDown"); key(editor, "Enter"); });
   assert.equal(shadow.activeElement, shadow.querySelector("input"));
   const [name, amount] = shadow.querySelectorAll("input");
+  let leakedMouseEvents = 0;
+  const onMouse = () => { leakedMouseEvents++; };
+  document.addEventListener("mousedown", onMouse);
+  document.addEventListener("click", onMouse);
+  await act(async () => {
+    const header = shadow.querySelector("header");
+    const mouseDown = new window.MouseEvent("mousedown", {
+      bubbles: true, composed: true, cancelable: true,
+    });
+    header.dispatchEvent(mouseDown);
+    assert.equal(mouseDown.defaultPrevented, true);
+    header.dispatchEvent(new window.MouseEvent("click", { bubbles: true, composed: true }));
+    await settle();
+  });
+  await act(async () => {
+    const labelText = shadow.querySelector("label span");
+    const mouseDown = new window.MouseEvent("mousedown", {
+      bubbles: true, composed: true, cancelable: true,
+    });
+    labelText.dispatchEvent(mouseDown);
+    assert.equal(mouseDown.defaultPrevented, true);
+    labelText.dispatchEvent(new window.MouseEvent("click", { bubbles: true, composed: true }));
+    await settle();
+  });
+  assert.equal(leakedMouseEvents, 0);
+  assert.equal(shadow.activeElement, name);
+  assert.ok(shadow.querySelector(".variable-entry"));
+  document.removeEventListener("mousedown", onMouse);
+  document.removeEventListener("click", onMouse);
+
   let leakedKeys = 0;
   document.addEventListener("keydown", () => { leakedKeys++; });
   await act(async () => {
