@@ -1,9 +1,70 @@
 import type { EditorStatus, EditorVendorName } from "../../core/data-types";
 import { repository } from "./repository";
 
-const getEditorStatus = async (
+export class EditorValidationError extends Error {}
+
+function assertVendorName(value: unknown): asserts value is EditorVendorName {
+  if (value !== "GOOGLE" && value !== "NAVER") {
+    throw new EditorValidationError("지원하지 않는 메일 서비스입니다.");
+  }
+}
+
+function assertText(value: unknown): asserts value is string {
+  if (typeof value !== "string") {
+    throw new EditorValidationError("본문은 문자열이어야 합니다.");
+  }
+}
+
+function assertStatus(
+  value: unknown,
   vendorName: EditorVendorName,
+): asserts value is Partial<EditorStatus> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new EditorValidationError("에디터 상태는 객체여야 합니다.");
+  }
+  const status = value as Record<string, unknown>;
+  for (const key of Object.keys(status)) {
+    switch (key) {
+      case "isEditable":
+        if (typeof status[key] !== "boolean") {
+          throw new EditorValidationError(
+            "편집 가능 여부는 boolean이어야 합니다.",
+          );
+        }
+        break;
+      case "text":
+        assertText(status[key]);
+        break;
+      case "prevTexts":
+        if (
+          !Array.isArray(status[key]) ||
+          !status[key].every((text) => typeof text === "string")
+        ) {
+          throw new EditorValidationError(
+            "이전 본문은 문자열 배열이어야 합니다.",
+          );
+        }
+        break;
+      case "vendorName":
+        assertVendorName(status[key]);
+        if (status[key] !== vendorName) {
+          throw new EditorValidationError(
+            "에디터 상태의 메일 서비스가 일치하지 않습니다.",
+          );
+        }
+        break;
+      default:
+        throw new EditorValidationError(
+          "지원하지 않는 에디터 상태 항목입니다.",
+        );
+    }
+  }
+}
+
+const getEditorStatus = async (
+  vendorName: unknown,
 ): Promise<EditorStatus | void> => {
+  assertVendorName(vendorName);
   const res = await repository.read(vendorName);
   if (!res) {
     return;
@@ -13,9 +74,11 @@ const getEditorStatus = async (
 };
 
 const updateEditorStatus = async (
-  vendorName: EditorVendorName,
-  status: Partial<EditorStatus>,
+  vendorName: unknown,
+  status: unknown,
 ): Promise<EditorStatus | void> => {
+  assertVendorName(vendorName);
+  assertStatus(status, vendorName);
   const res = await repository.update(vendorName, status);
   if (!res) {
     return;
@@ -25,9 +88,11 @@ const updateEditorStatus = async (
 };
 
 const addPrevText = async (
-  vendorName: EditorVendorName,
-  prevText: string,
+  vendorName: unknown,
+  prevText: unknown,
 ): Promise<EditorStatus | void> => {
+  assertVendorName(vendorName);
+  assertText(prevText);
   if (prevText === "") {
     return;
   }
@@ -41,11 +106,14 @@ const addPrevText = async (
 };
 
 const updateText = async (
-  vendorName: EditorVendorName,
-  text: string,
-  prevText: string,
+  vendorName: unknown,
+  text: unknown,
+  prevText: unknown,
 ): Promise<EditorStatus | void> => {
-  if (prevText && prevText.length > 0) {
+  assertVendorName(vendorName);
+  assertText(text);
+  assertText(prevText);
+  if (prevText.length > 0) {
     await addPrevText(vendorName, prevText);
   }
 
@@ -57,27 +125,9 @@ const updateText = async (
   return response;
 };
 
-// Replace this catalog with a backend repository when an API is available.
-const templates = [
-  { id: "1", name: "템플릿 1", command: "/1", text: "template1" },
-  { id: "2", name: "템플릿 2", command: "/2", text: "template2" },
-  { id: "3", name: "템플릿 3", command: "/3", text: "template3" },
-  {
-    id: "4",
-    name: "문의 접수 안내",
-    command: "/4",
-    text: "안녕하세요, {{이름}}님.\n\n{{문의사항}} 문의가 접수되었습니다.\n확인 후 {{이름}}님께 안내드리겠습니다. {{끝인사말}}",
-  },
-  { id: "5", name: "템플릿 5", command: "/11", text: "template5" },
-  { id: "6", name: "템플릿 6", command: "/111", text: "template6" },
-  { id: "7", name: "템플릿 7", command: "/1111", text: "template7" },
-];
-const listTemplates = () => templates;
-
 export const service = {
   getEditorStatus,
   updateEditorStatus,
   addPrevText,
   updateText,
-  listTemplates,
 };

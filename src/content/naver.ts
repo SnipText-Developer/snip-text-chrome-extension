@@ -1,11 +1,11 @@
-import { UrlObserver } from "./common/observer/url-observer";
+import { UrlObserver } from "./controller/editor-handler/observer/url-observer";
 import { runAfterRender } from "./common/wrap-run-after-render";
 import { sendMessage } from "../common/message-bus";
 import {
   startEditorObserver,
   type EditorObserver,
-} from "./common/editor-handler";
-import { createEditorRouter, listenEditorRouter } from "./common/editor-router";
+} from "./controller/editor-handler";
+import { createEditorRouter, listenEditorRouter } from "./editor-router";
 
 const NAVER_EDITOR_URL = "mail.naver.com/v2/new";
 const NAVER_EDITOR_SELECTOR =

@@ -2,8 +2,8 @@ import { runAfterRender } from "./common/wrap-run-after-render";
 import {
   startEditorObserver,
   type EditorObserver,
-} from "./common/editor-handler";
-import { createEditorRouter, listenEditorRouter } from "./common/editor-router";
+} from "./controller/editor-handler";
+import { createEditorRouter, listenEditorRouter } from "./editor-router";
 
 const GMAIL_EDITOR_SELECTOR =
   'div[contenteditable="true"][g_editable="true"][role="textbox"][aria-multiline="true"]';

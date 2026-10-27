@@ -1,0 +1,49 @@
+.editor-test-panel {
+  margin-bottom: 28px;
+  padding: 16px;
+  border: 1px dashed #bdc4d0;
+  border-radius: 12px;
+  background: #f8f9fb;
+  font-size: 13px;
+}
+.editor-test-panel summary { cursor: pointer; font-weight: 650; }
+.editor-test-help { margin: 10px 0 14px; color: #697386; font-size: 12px; }
+.editor-test-vendor + .editor-test-vendor {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #e0e4eb;
+}
+.editor-test-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+}
+.editor-test-heading h2 { font-size: 14px; }
+.editor-test-badge {
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #e9ecf1;
+  color: #697386;
+  font-size: 11px;
+}
+.editor-test-badge.received { background: #e2f3e9; color: #17694d; }
+.editor-test-vendor dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+.editor-test-vendor dt { color: #697386; font-size: 11px; }
+.editor-test-vendor dd { margin: 0; }
+.editor-test-content summary { font-size: 12px; }
+.editor-test-content pre {
+  max-height: 160px;
+  overflow: auto;
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  font-size: 12px;
+}

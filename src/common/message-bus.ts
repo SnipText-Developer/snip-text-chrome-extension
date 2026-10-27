@@ -33,22 +33,22 @@ async function sendToActiveTab(
 }
 
 function listenMessage(
-  callback: (req: MessageRequest) => Promise<MessageResponse | void>,
+  callback: (
+    req: MessageRequest,
+    sender: chrome.runtime.MessageSender,
+  ) => Promise<MessageResponse | void>,
 ): void {
   const _callback = (
     req: MessageRequest,
-    _sender: chrome.runtime.MessageSender,
+    sender: chrome.runtime.MessageSender,
     sendResponse: (response: MessageResponse) => void,
   ) => {
-    Promise.resolve(callback(req)).then((res) => {
+    Promise.resolve().then(() => callback(req, sender)).then((res) => {
       if (res) {
         sendResponse(res);
-      } else {
-        sendResponse({
-          statusCode: 500,
-          data: { msg: `${req.path} | response data is not created` },
-        });
       }
+    }).catch(() => {
+      sendResponse({ statusCode: 500, data: { msg: "메시지 처리에 실패했습니다." } });
     });
 
     return true;

@@ -3,14 +3,14 @@ import type { EditorVendorName } from "../../core/data-types";
 
 const LIST_MAX_LEN = 2;
 
-const storage: Record<EditorVendorName, EditorStatus> = {
-  NAVER: {
+const storage: Partial<Record<`snip.${EditorVendorName}`, EditorStatus>> = {
+  "snip.NAVER": {
     isEditable: false,
     text: "",
     prevTexts: [],
     vendorName: "NAVER",
   },
-  GOOGLE: {
+  "snip.GOOGLE": {
     isEditable: false,
     text: "",
     prevTexts: [],
@@ -18,10 +18,13 @@ const storage: Record<EditorVendorName, EditorStatus> = {
   },
 };
 
+const getKey = (vendorName: EditorVendorName): `snip.${EditorVendorName}` =>
+  `snip.${vendorName}`;
+
 const read = async (
   vendorName: EditorVendorName,
 ): Promise<EditorStatus | null> => {
-  const key = vendorName;
+  const key = getKey(vendorName);
   return storage[key] ? { ...storage[key] } : null;
 };
 
@@ -29,7 +32,7 @@ const create = async (
   vendorName: EditorVendorName,
   data: EditorStatus,
 ): Promise<EditorStatus | null> => {
-  const key = vendorName;
+  const key = getKey(vendorName);
   storage[key] = { ...storage[key], ...data };
 
   return await read(vendorName);
@@ -47,7 +50,7 @@ const update = async (
   vendorName: EditorVendorName,
   data: Partial<EditorStatus>,
 ): Promise<EditorStatus | null> => {
-  const key = vendorName;
+  const key = getKey(vendorName);
   if (!storage[key]) {
     return null;
   }
@@ -69,9 +72,13 @@ const appendPrevTexts = async (
   vendorName: EditorVendorName,
   prevText: string,
 ): Promise<EditorStatus | null> => {
-  storage[vendorName].prevTexts.unshift(prevText);
-  if (storage[vendorName].prevTexts.length > LIST_MAX_LEN) {
-    storage[vendorName].prevTexts.pop();
+  const key = getKey(vendorName);
+  const status = storage[key];
+  if (!status) return null;
+
+  status.prevTexts.unshift(prevText);
+  if (status.prevTexts.length > LIST_MAX_LEN) {
+    status.prevTexts.pop();
   }
 
   return await read(vendorName);
@@ -80,7 +87,7 @@ const appendPrevTexts = async (
 const deleteOne = async (
   vendorName: EditorVendorName,
 ): Promise<EditorStatus | null> => {
-  const key = vendorName;
+  const key = getKey(vendorName);
   if (!storage[key]) {
     return null;
   }

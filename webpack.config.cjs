@@ -1,3 +1,5 @@
+const { randomBytes } = require("node:crypto");
+const { DefinePlugin } = require("webpack");
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
@@ -16,12 +18,12 @@ module.exports = {
     clean: true,
   },
   resolve: {
-    extensions: [".ts", ".js"],
+    extensions: [".tsx", ".ts", ".js"],
   },
   module: {
     rules: [
       {
-        test: /\.ts$/,
+        test: /\.tsx?$/,
         exclude: /node_modules/,
         use: {
           loader: "ts-loader",
@@ -37,8 +39,11 @@ module.exports = {
     splitChunks: false,
   },
   plugins: [
+    new DefinePlugin({
+      __AUTH_TOKEN_ENCRYPTION_KEY_HEX__: JSON.stringify(randomBytes(32).toString("hex")),
+    }),
     new HtmlWebpackPlugin({
-      template: "./src/page/index.html",
+      template: "./packages/sidebar/index.html",
       filename: "src/page/index.html",
       chunks: ["src/page/index"],
       inject: "body",

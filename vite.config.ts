@@ -6,7 +6,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        "src/page/index": resolve(process.cwd(), "src/page/index.html"),
+        "src/page/index": resolve(process.cwd(), "packages/sidebar/index.html"),
         "src/content/gmail": resolve(process.cwd(), "src/content/gmail.ts"),
         "src/content/naver": resolve(process.cwd(), "src/content/naver.ts"),
       },
