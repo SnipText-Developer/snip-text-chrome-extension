@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { sendMessage } from "../common/sendMessage";
 import { tryCatch } from "../common/wrapper";
-import { isEditorStatus } from "../common/editor-status";
 import type { EditorStatus, EditorVendorName } from "../core/data-types";
 import type { EditorStatusState } from "../context/editorStatusContext";
 import type { MessageRequest, MessageResponse } from "../core/message-types";
@@ -15,15 +14,34 @@ function getEditorVendor(tabUrl: string | undefined): EditorVendorName | null {
   if (url.protocol !== "https:") return null;
 
   switch (url.hostname) {
-    case "mail.google.com": return "GOOGLE";
-    case "mail.naver.com": return "NAVER";
-    default: return null;
+    case "mail.google.com":
+      return "GOOGLE";
+    case "mail.naver.com":
+      return "NAVER";
+    default:
+      return null;
   }
 }
 
+export function isEditorStatus(value: unknown): value is EditorStatus {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const status = value as Partial<EditorStatus>;
+  return (
+    (status.vendorName === "GOOGLE" || status.vendorName === "NAVER") &&
+    typeof status.isEditable === "boolean" &&
+    typeof status.text === "string" &&
+    Array.isArray(status.prevTexts) &&
+    status.prevTexts.every((text) => typeof text === "string")
+  );
+}
+
 function isEditorNotification(req: MessageRequest): boolean {
-  return req.src === "BACKGROUND" && req.dst === "PAGE" &&
-    req.method === "PUT" && req.path === EDITOR_NOTIFY_STATUS_PATH;
+  return (
+    req.src === "BACKGROUND" &&
+    req.dst === "PAGE" &&
+    req.method === "PUT" &&
+    req.path === EDITOR_NOTIFY_STATUS_PATH
+  );
 }
 
 async function fetchInitialStatus(): Promise<EditorStatus | null> {
@@ -38,7 +56,11 @@ async function fetchInitialStatus(): Promise<EditorStatus | null> {
     path: EDITOR_STATUS_PATH,
     data: { vendorName },
   });
-  if (response?.statusCode !== 200 || !isEditorStatus(response.data) || response.data.vendorName !== vendorName) {
+  if (
+    response?.statusCode !== 200 ||
+    !isEditorStatus(response.data) ||
+    response.data.vendorName !== vendorName
+  ) {
     return null;
   }
 
@@ -61,7 +83,8 @@ function useMessageListener(): EditorStatusState {
         const received = {
           ...status,
           receivedAt,
-          updateCount: (previous.statuses[status.vendorName]?.updateCount ?? 0) + 1,
+          updateCount:
+            (previous.statuses[status.vendorName]?.updateCount ?? 0) + 1,
         };
         return {
           latestStatus: received,
@@ -77,7 +100,10 @@ function useMessageListener(): EditorStatusState {
     ) => {
       if (cancelled || !isEditorNotification(req)) return false;
       if (!isEditorStatus(req.data)) {
-        sendResponse({ statusCode: 400, data: { msg: "잘못된 에디터 상태입니다." } });
+        sendResponse({
+          statusCode: 400,
+          data: { msg: "잘못된 에디터 상태입니다." },
+        });
         return false;
       }
 
