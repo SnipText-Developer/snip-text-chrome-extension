@@ -10,8 +10,7 @@
   },
   "dependencies": {
     "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "@snip-text/mini-popup": "*"
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@types/chrome": "^0.3.0",

@@ -108,10 +108,14 @@ vendor는 `google` 또는 `naver`입니다. 허용되지 않은 발신자는 응
 
 ### React 템플릿 팝업
 
-콘텐츠 스크립트의 `packages/mini-popup/src/index.ts`는 닫힌 Shadow DOM과 React root만 생성합니다. `useMiniPopup`이 React 상태·메시지 조회·키보드·포커스 이벤트를 관리하고, `usePopupPosition`이 위치 계산과 스크롤·리사이즈 이벤트를 처리합니다. `MiniPopup.tsx`, `TemplateList.tsx`, `TemplateVariablesForm.tsx`가 UI를 담당합니다. 스타일은 `styles/popup.css`를 문자열로 번들에 포함해 React의 `<style>`로 Shadow DOM에 적용합니다. `useEditor`가 React ref와 콜백으로 커서·삽입·포커스 복원을 관리하고, `utils/text.ts`는 변수 추출과 공백 처리를 담당합니다.
+콘텐츠 스크립트의 `packages/mini-popup/src/index.ts`는 일반 DOM 컨테이너와 React root만 생성합니다. `useMiniPopup`이 React 상태·메시지 조회·키보드·포커스 이벤트를 관리하고, `usePopupPosition`이 위치 계산과 스크롤·리사이즈 이벤트를 처리합니다. `MiniPopup.tsx`, `TemplateList.tsx`, `TemplateVariablesForm.tsx`가 UI를 담당합니다. 스타일은 `styles/normalize.css`, `styles/common.css`와 컴포넌트별 CSS를 문자열로 번들에 포함해 React의 `<style>`로 적용합니다. 모든 CSS 선택자는 `#snip-text-mini-popup` 내부로 제한합니다. `dom/editor.ts`가 범위 계산·커서 복원을, `dom/popup.ts`가 팝업 위치 측정·스타일 변경을 담당합니다. `useEditor`는 삽입 위치 저장과 DOM 함수 호출을 관리하고, `utils/text.ts`는 변수 추출·치환을 담당합니다. 공백·개행 인코딩은 `src/content/utils/editor-text.ts`의 `encodeEditorText`로 통일해 실제 삽입 직전에 적용합니다.
 
-팝업 키 이벤트는 React 처리 후 메일 페이지로의 전파를 차단합니다. 테스트는 `node --test tests/mini-popup.test.mjs`로 실행하며 목록 선택, 변수 입력, 한글 조합 입력, 취소와 비동기 응답 경합, 언마운트 후 리스너 정리를 확인합니다.
+팝업은 이벤트 전파를 차단하지 않습니다. 목록의 방향키·Enter·Esc만 처리하고, 변수 입력과 Tab 이동은 브라우저 기본 동작을 사용합니다. 테스트는 `node --test tests/mini-popup.test.mjs`로 실행하며 목록 선택, 변수 입력, 한글 조합 입력, 취소와 비동기 응답 경합, 언마운트 후 리스너 정리를 확인합니다.
 
+
+### 텍스트 삽입 테스트
+
+`npm run test:insert-text`로 `insertTextToEditor`와 공통 공백·개행 인코딩을 검증합니다. 한글·다국어·이모지·결합 문자·HTML/엔티티 문자열·특수 공백·개행·긴 본문·커서 위치·예외 경로를 포함합니다. jsdom 기반 DOM 테스트이며 실제 메일 편집기의 렌더링과 실행 취소 동작은 별도 브라우저 확인이 필요합니다. Range 삽입 실패 시 기존 `textContent` fallback에도 같은 인코딩을 적용하지만 시각적 개행을 위한 `<br>`는 생성하지 않습니다.
 
 ### mini-popup 패키지
 
@@ -123,14 +127,17 @@ import { startPopup } from "@snip-text/mini-popup";
 const stopPopup = startPopup({
   selector: '[contenteditable="true"]',
   getTemplates: async () => templates,
+  insertText: async (text) => insertThroughBackground(text),
 });
 
 // 팝업, React root, 이벤트 리스너 정리
 stopPopup();
 ```
 
-React와 React DOM은 peer dependency입니다. 스타일은 번들에 포함되어 별도 CSS 로딩 없이 Shadow DOM 내부에 적용됩니다. 외부 npm 레지스트리에 배포하지 않은 로컬 workspace 패키지입니다.
+React와 React DOM은 일반 의존성입니다. 스타일은 번들에 포함되어 별도 CSS 로딩 없이 팝업 컨테이너 내부에만 적용됩니다. 외부 npm 레지스트리에 배포하지 않은 로컬 workspace 패키지입니다.
 
+
+mini-popup의 삽입은 주입된 콜백을 통해 background의 `/editor/insert-text`를 호출합니다. 실제 DOM 치환은 콘텐츠 스크립트의 `src/content/controller/insert-text.ts`로 모았습니다. 텍스트만 요청하며, 요청을 보낸 탭·프레임에서 기존 API 동작대로 본문 전체를 교체합니다.
 
 ### 사이드바 패키지
 

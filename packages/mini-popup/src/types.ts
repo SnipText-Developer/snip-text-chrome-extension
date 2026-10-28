@@ -12,4 +12,5 @@ export interface Template {
 export interface StartPopupOptions {
   selector: string;
   getTemplates: () => Promise<Template[]>;
+  insertText: (text: string) => Promise<void>;
 }

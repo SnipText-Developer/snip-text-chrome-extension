@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getTemplateVariables, useTemplateContent } from "@snip-text/mini-popup";
+import { getTemplateVariables, getTemplateContent } from "../common/template-content";
 import type { Template } from "../core/data-types";
 import "./TemplateInsertPage.css";
 
@@ -22,8 +22,8 @@ export default function TemplateInsertPage({ template, busy, editable, notice, o
   const previewValues = useMemo(() => Object.fromEntries(
     Object.entries(values).filter(([, value]) => value !== ""),
   ), [values]);
-  const preview = useTemplateContent(template.content, previewValues);
-  const content = useTemplateContent(template.content, values);
+  const preview = useMemo(() => getTemplateContent(template.content, previewValues), [template.content, previewValues]);
+  const content = useMemo(() => getTemplateContent(template.content, values), [template.content, values]);
 
   useEffect(() => { firstInput.current?.focus(); }, []);
   useEffect(() => {

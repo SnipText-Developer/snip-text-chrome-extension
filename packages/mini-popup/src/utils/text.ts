@@ -8,11 +8,9 @@ export function getTemplateVariables(text: string): string[] {
   ];
 }
 
-// HTML editors can collapse consecutive spaces and hide line-edge spaces.
-// Keep ordinary single word separators so text can still wrap naturally.
-export function preserveEditorSpaces(text: string): string {
-  return text
-    .replace(/\r\n/g, "\n")
-    .replace(/^ +| +$| {2,}/gm, (spaces) => "\u00a0".repeat(spaces.length));
+export function getTemplateContent(content: string, values: Readonly<Record<string, string>>): string {
+  return content.replace(variablePattern, (placeholder, field: string) => {
+    const name = field.trim();
+    return Object.hasOwn(values, name) ? values[name] : placeholder;
+  });
 }
-

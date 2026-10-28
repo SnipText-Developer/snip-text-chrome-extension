@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect } from "react";
 import type { RefObject } from "react";
-import type { EditorAnchor } from "./useEditor";
+import type { EditorAnchor } from "../dom/editor";
+import { positionPopup, hidePopup } from "../dom/popup";
 
 export function usePopupPosition(
   host: HTMLElement,
@@ -9,19 +10,14 @@ export function usePopupPosition(
   open: boolean,
 ) {
   const position = useCallback(() => {
-    const match = anchor.current;
-    if (!open || !match || !popup.current) return;
-    const rect = match.trigger.getBoundingClientRect();
-    const bounds = rect.height ? rect : match.editor.getBoundingClientRect();
-    host.style.display = "block";
-    const { width, height } = popup.current.getBoundingClientRect();
-    host.style.left = `${Math.max(8, Math.min(bounds.left, window.innerWidth - width - 8))}px`;
-    host.style.top = `${Math.max(8, bounds.bottom + height + 6 <= window.innerHeight ? bounds.bottom + 6 : bounds.top - height - 6)}px`;
+    if (open && anchor.current && popup.current) {
+      positionPopup(host, popup.current, anchor.current);
+    }
   }, [host, popup, anchor, open]);
 
   useLayoutEffect(() => {
     if (open) position();
-    else host.style.display = "none";
+    else hidePopup(host);
   });
   useEffect(() => {
     window.addEventListener("resize", position);

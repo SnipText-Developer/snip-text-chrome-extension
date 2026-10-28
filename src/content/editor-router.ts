@@ -1,6 +1,7 @@
 import { listenMessage } from "../common/message-bus";
 import type { MessageRequest, MessageResponse } from "../core/message-types";
 import { insertTextToEditor } from "./controller/insert-text";
+import { normalizeEditorText } from "./utils/editor-text";
 import type { EditorVendorName } from "../core/data-types";
 import type { EditorStatus } from "../core/data-types";
 
@@ -21,17 +22,19 @@ export function createEditorRouter({
     }
 
     if (req.method === "PUT" && req.path === "/editor/insert-text") {
-      if (!req.data || !req.data.text) {
+      if (!req.data || typeof req.data.text !== "string" || !req.data.text) {
         return {
           statusCode: 400,
           data: { msg: "Invalid data field" },
         };
       }
 
+      const text = normalizeEditorText(req.data.text);
+      if (!text) return { statusCode: 400, data: { msg: "Invalid data field" } };
       const editor = getEditor();
       const { prevText, isInserted } = insertTextToEditor(
         editor,
-        req.data.text,
+        text,
       );
 
       if (!isInserted) {

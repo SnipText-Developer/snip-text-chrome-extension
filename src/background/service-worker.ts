@@ -1,7 +1,7 @@
 import { listenMessage } from "../common/message-bus";
 import type { MessageRequest, MessageResponse } from "../core/message-types";
 import { router as authRouter } from "./auth/router";
-import { router as editorRouter } from "./editor/router";
+import { router as editorRouter } from "./editor/router/router";
 import { router as templateRouter } from "./template/router";
 
 listenMessage(

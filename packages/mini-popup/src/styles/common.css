@@ -1,0 +1,18 @@
+#snip-text-mini-popup .list {
+  flex: 1;
+  min-height: 0;
+  max-height: 9rem;
+  overflow-y: auto;
+}
+
+#snip-text-mini-popup button {
+  display: block;
+  border: 0;
+  background: white;
+  color: inherit;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+}

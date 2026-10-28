@@ -1,0 +1,49 @@
+#snip-text-mini-popup .list[role="listbox"] {
+  padding: 0.625rem;
+  scroll-padding-block: 0.625rem;
+}
+
+#snip-text-mini-popup .section-title {
+  margin: 0 0 0.625rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  font-weight: 600;
+  color: #525252;
+}
+
+#snip-text-mini-popup button[aria-selected="true"] {
+  background: #d9d9d9;
+}
+
+#snip-text-mini-popup button[role="option"] {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.25rem;
+  padding: 0 0.625rem;
+  border-radius: 0.625rem;
+}
+
+#snip-text-mini-popup .template-command {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+#snip-text-mini-popup .template-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #596375;
+  font-size: 0.75rem;
+}
+
+#snip-text-mini-popup .message {
+  padding: 0.75rem;
+  color: #6b7280;
+}

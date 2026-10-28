@@ -1,3 +1,5 @@
+import { encodeEditorText } from "../utils/editor-text";
+
 export function insertTextToEditor(
   editor: HTMLElement | undefined | null,
   text: string,
@@ -19,6 +21,8 @@ export function insertTextToEditor(
     };
   }
 
+  const encodedText = encodeEditorText(safeText);
+
   try {
     editor.focus();
     editor.textContent = "";
@@ -33,8 +37,7 @@ export function insertTextToEditor(
       selection.addRange(range);
     }
 
-    const normalizedText = safeText.replace(/\r\n/g, "\n");
-    const lines = normalizedText.split("\n");
+    const lines = encodedText.split("\n");
 
     lines.forEach((line, index) => {
       if (index > 0) {
@@ -67,7 +70,7 @@ export function insertTextToEditor(
     console.warn("Failed to insert text into editor:", error);
   }
 
-  editor.textContent = safeText;
+  editor.textContent = encodedText;
 
   return {
     prevText,

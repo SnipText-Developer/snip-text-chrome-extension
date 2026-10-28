@@ -1,0 +1,47 @@
+/* Reset base styles within the popup scope. */
+#snip-text-mini-popup {
+  all: initial;
+  line-height: 1.5;
+  font-family: system-ui, sans-serif;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+  text-align: left;
+  direction: ltr;
+}
+
+#snip-text-mini-popup *,
+#snip-text-mini-popup *::before,
+#snip-text-mini-popup *::after {
+  box-sizing: border-box;
+}
+
+#snip-text-mini-popup header,
+#snip-text-mini-popup footer,
+#snip-text-mini-popup section {
+  display: block;
+}
+
+#snip-text-mini-popup form,
+#snip-text-mini-popup p,
+#snip-text-mini-popup button,
+#snip-text-mini-popup input {
+  margin: 0;
+}
+
+#snip-text-mini-popup button,
+#snip-text-mini-popup input {
+  font: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+  overflow: visible;
+}
+
+#snip-text-mini-popup button,
+#snip-text-mini-popup input[type="text"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+#snip-text-mini-popup [hidden] {
+  display: none;
+}

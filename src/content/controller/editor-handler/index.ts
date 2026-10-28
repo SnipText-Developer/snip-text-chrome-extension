@@ -1,4 +1,5 @@
 import { startPopup } from "@snip-text/mini-popup";
+import { insertTemplate } from "../insert-template";
 import { EditorMutationObserver } from "./observer/editor-mutation-observer";
 import { EditorPollingObserver } from "./observer/editor-polling-observer";
 import { EditorCombinedObserver } from "./observer/editor-combined-observer";
@@ -64,6 +65,7 @@ function startEditorObserver({
   observer.start();
   startPopup({
     selector,
+    insertText: insertTemplate,
     getTemplates: async () => {
       const response = await sendMessage({
         src: "CONTENT",

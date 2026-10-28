@@ -31,7 +31,9 @@ function moduleUrl(path) {
   modules.set(url.href, result);
   return result;
 }
-const { getTemplateVariables, preserveEditorSpaces } = await import(moduleUrl("../packages/mini-popup/src/utils/text.ts"));
+const { getTemplateVariables } = await import(moduleUrl("../packages/mini-popup/src/utils/text.ts"));
+
+const { encodeEditorText } = await import(moduleUrl("../src/content/utils/editor-text.ts"));
 
 const { useTemplateContent } = await import(moduleUrl("../packages/mini-popup/src/hooks/useTemplateContent.ts"));
 
@@ -44,24 +46,18 @@ test("React content hook replaces repeated variables and preserves empty or miss
   assert.equal(renderToStaticMarkup(createElement(Content, { text, values: { 이름: "민", 금액: "" } })), "<span>민님, 원입니다. 민님</span>");
   assert.equal(renderToStaticMarkup(createElement(Content, { text: "{{이름}}", values: {} })), "<span>{{이름}}</span>");
   assert.equal(renderToStaticMarkup(createElement(Content, { text: "{{toString}}", values: {} })), "<span>{{toString}}</span>");
-  assert.equal(preserveEditorSpaces(" a  b \r\n c"), "\u00a0a\u00a0\u00a0b\u00a0\n\u00a0c");
+  assert.equal(encodeEditorText(" a  b \r\n c"), "\u00a0a\u00a0\u00a0b\u00a0\n\u00a0c");
 });
 
 test("React popup preserves selection, variables, IME, cancellation and stale-request handling", async (t) => {
   const dom = new JSDOM('<!doctype html><html><body><div id="editor" contenteditable="true" tabindex="0"></div></body></html>', { url: "https://mail.google.com/mail/u/0/", pretendToBeVisual: true });
   const { window } = dom;
-  for (const name of ["window", "document", "HTMLElement", "Element", "Node", "NodeFilter", "InputEvent"]) {
+  for (const name of ["window", "document", "HTMLElement", "Element", "Node", "NodeFilter", "InputEvent", "AbortController"]) {
     globalThis[name] = name === "window" ? window : window[name];
   }
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
   window.Range.prototype.getBoundingClientRect = () => ({ left: 10, top: 10, bottom: 30, height: 20 });
   window.HTMLElement.prototype.scrollIntoView = () => {};
-  let shadow;
-  const attachShadow = window.Element.prototype.attachShadow;
-  t.mock.method(window.Element.prototype, "attachShadow", function (options) {
-    shadow = attachShadow.call(this, options);
-    return shadow;
-  });
   const templates = [
     { templateId: 1, title: "본문", shortcut: "/1", content: "일반 본문", variables: [] },
     { templateId: 2, title: "견적 안내", shortcut: "/견적", content: "{{이름}}님 {{금액}}원", variables: ["이름", "금액"] },
@@ -78,16 +74,42 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   };
   const editor = document.querySelector("#editor");
   const inserted = [];
-  editor.addEventListener("input", (event) => {
-    if (event.inputType === "insertText") {
-      inserted.push(event.data);
-      assert.equal(event.bubbles, true);
-      assert.equal(event.composed, true);
-    }
-  });
   const { startPopup } = await import(moduleUrl("../packages/mini-popup/src/index.ts"));
+  const { router: backgroundRouter } = await import(moduleUrl("../src/background/editor/router/router.ts"));
+  const { createEditorRouter } = await import(moduleUrl("../src/content/editor-router.ts"));
+  const { insertTemplate } = await import(moduleUrl("../src/content/controller/insert-template.ts"));
+  const { insertTextToEditor } = await import(moduleUrl("../src/content/controller/insert-text.ts"));
+  const contentRouter = createEditorRouter({
+    vendorName: "GOOGLE", getEditor: () => editor,
+    getEditorStatus: () => ({ text: editor.textContent }),
+  });
+  const contentSender = { id: "extension", url: "https://mail.google.com/mail/u/0/", tab: { id: 42 }, frameId: 3 };
+  const delivered = [];
+  let failInsertion = false;
+  let holdInsertion;
+  const previousChrome = globalThis.chrome;
+  globalThis.chrome = {
+    runtime: {
+      id: "extension", getURL: (path) => "chrome-extension://extension/" + path,
+      sendMessage: (request) => request.dst === "BACKGROUND" ? backgroundRouter(request, contentSender) : Promise.resolve(),
+    },
+    tabs: {
+      query: async () => [{ id: 99 }],
+      sendMessage: async (tabId, request, options) => {
+        delivered.push({ tabId, request, options });
+        if (holdInsertion) await holdInsertion;
+        if (failInsertion) return { statusCode: 500, data: {} };
+        const response = await contentRouter(request);
+        if (response?.statusCode === 200) inserted.push(request.data.text);
+        return response;
+      },
+    },
+  };
+  t.after(() => { globalThis.chrome = previousChrome; });
   let stop;
-  await act(async () => { stop = startPopup({ selector: "#editor", getTemplates }); });
+  await act(async () => { stop = startPopup({ selector: "#editor", getTemplates, insertText: insertTemplate }); });
+  const host = document.querySelector("#snip-text-mini-popup");
+  assert.equal(host.shadowRoot, null);
   t.after(async () => { await act(async () => { stop(); }); dom.window.close(); });
   const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
   const key = (target, value, extra = {}) => target.dispatchEvent(new window.KeyboardEvent("keydown", { key: value, bubbles: true, composed: true, cancelable: true, ...extra }));
@@ -105,14 +127,75 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
     });
   }
   await open();
-  assert.equal(shadow.querySelectorAll('[role="option"]').length, 2);
-  assert.equal(document.activeElement, editor);
+  assert.equal(host.querySelectorAll('[role="option"]').length, 2);
+  assert.ok(document.activeElement === editor);
+  await act(async () => {
+    for (const selector of [".popup", "header", '[role="listbox"]']) {
+      const target = host.querySelector(selector);
+      const mouseDown = new window.MouseEvent("mousedown", { bubbles: true, cancelable: true });
+      target.dispatchEvent(mouseDown);
+      assert.equal(mouseDown.defaultPrevented, true, "Popup whitespace preserves editor focus");
+      document.dispatchEvent(new window.Event("selectionchange"));
+      await settle();
+      assert.ok(document.activeElement === editor);
+      assert.equal(host.querySelectorAll('[role="option"]').length, 2);
+    }
+    const optionMouseDown = new window.MouseEvent("mousedown", { bubbles: true, cancelable: true });
+    host.querySelector('[role="option"] span').dispatchEvent(optionMouseDown);
+    assert.equal(optionMouseDown.defaultPrevented, false, "Option buttons keep native focus behavior");
+  });
+  const stopEditorKeyBubbling = (event) => event.stopPropagation();
+  const scrollingList = host.querySelector('[role="listbox"]');
+  Object.defineProperty(scrollingList, "clientHeight", { value: 100 });
+  Object.defineProperty(scrollingList, "scrollHeight", { value: 150 });
+  scrollingList.getBoundingClientRect = () => ({ top: 100, bottom: 200 });
+  host.querySelectorAll('[role="option"]').forEach((option, index) => {
+    option.getBoundingClientRect = () => ({
+      top: 100 + index * 100 - scrollingList.scrollTop,
+      bottom: 140 + index * 100 - scrollingList.scrollTop,
+    });
+  });
+  editor.addEventListener("keydown", stopEditorKeyBubbling);
   await act(async () => { key(editor, "ArrowDown"); });
-  assert.equal(shadow.querySelectorAll('[role="option"]')[1].getAttribute("aria-selected"), "true");
-  await act(async () => { shadow.querySelector('[role="option"]').dispatchEvent(new window.Event("pointermove", { bubbles: true })); });
-  assert.equal(shadow.querySelector('[role="option"]').getAttribute("aria-selected"), "true");
+  assert.equal(scrollingList.scrollTop, 50, "The last option reveals the list's bottom padding");
+  assert.equal(host.querySelectorAll('[role="option"]')[1].getAttribute("aria-selected"), "true");
+  await act(async () => { key(editor, "ArrowUp"); });
+  assert.equal(scrollingList.scrollTop, 0, "The first option reveals the list's top padding");
+  assert.equal(host.querySelector('[role="option"]').getAttribute("aria-selected"), "true");
+  await act(async () => { key(editor, "ArrowDown"); });
+  editor.removeEventListener("keydown", stopEditorKeyBubbling);
+  const requestsBeforeSelectionChange = requests;
+  await act(async () => {
+    document.dispatchEvent(new window.Event("selectionchange"));
+    await settle();
+  });
+  assert.equal(requests, requestsBeforeSelectionChange, "An unchanged query must not reload templates");
+  assert.equal(host.querySelectorAll('[role="option"]')[1].getAttribute("aria-selected"), "true");
+  await act(async () => { host.querySelector('[role="option"]').dispatchEvent(new window.Event("pointermove", { bubbles: true })); });
+  assert.equal(scrollingList.scrollTop, 50, "Pointer movement does not scroll the list");
+  assert.equal(host.querySelector('[role="option"]').getAttribute("aria-selected"), "true");
   await act(async () => { key(editor, "Enter"); });
   assert.equal(inserted.at(-1), "일반 본문");
+
+  await open();
+  await act(async () => { host.querySelector('[role="option"]').focus(); });
+  await act(async () => { key(document.activeElement, "ArrowDown"); });
+  assert.ok(document.activeElement === host.querySelectorAll('[role="option"]')[1]);
+  assert.equal(document.activeElement.getAttribute("aria-selected"), "true");
+  await act(async () => { key(document.activeElement, "ArrowDown"); });
+  assert.ok(document.activeElement === host.querySelector('[role="option"]'), "ArrowDown wraps to the first option");
+  await act(async () => { key(document.activeElement, "ArrowUp"); });
+  assert.ok(document.activeElement === host.querySelectorAll('[role="option"]')[1], "ArrowUp wraps to the last option");
+  await act(async () => {
+    const option = host.querySelectorAll('[role="option"]')[1];
+    option.focus();
+    const enter = new window.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+    option.dispatchEvent(enter);
+    assert.equal(enter.defaultPrevented, false, "Focused buttons keep native Enter activation");
+    option.click();
+  });
+  assert.ok(host.querySelector("input"), "The focused option is chosen, regardless of the active index");
+  await act(async () => { key(host.querySelector("input"), "Escape"); });
 
   await open();
   const beforeComposition = requests;
@@ -131,9 +214,9 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
 
       await settle();
     });
-    assert.notEqual(shadow.host.style.display, "none");
+    assert.notEqual(host.style.display, "none");
     assert.ok(requests > requestsBeforeSyllable);
-    const composingOptions = shadow.querySelectorAll('[role="option"]');
+    const composingOptions = host.querySelectorAll('[role="option"]');
     assert.equal(composingOptions.length, query === "겨" ? 0 : 1);
     if (query !== "겨") assert.match(composingOptions[0].getAttribute("aria-label"), /견적/);
     assert.equal(inserted.length, 1);
@@ -143,121 +226,257 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
 
       await settle();
     });
-    assert.notEqual(shadow.host.style.display, "none");
-    assert.equal(shadow.querySelectorAll('[role="option"]').length, query === "겨" ? 0 : 1);
-    if (query !== "겨") assert.match(shadow.querySelector('[role="option"]').textContent, /견적/);
+    assert.notEqual(host.style.display, "none");
+    assert.equal(host.querySelectorAll('[role="option"]').length, query === "겨" ? 0 : 1);
+    if (query !== "겨") assert.match(host.querySelector('[role="option"]').textContent, /견적/);
   }
   assert.ok(requests > beforeComposition);
   assert.equal(inserted.length, 1);
 
-  for (const afterComposition of [false, true]) {
-    await open();
-    await act(async () => {
-      editor.dispatchEvent(new window.CompositionEvent("compositionstart", { bubbles: true }));
-      editor.textContent = "/견적";
-      window.getSelection().collapse(editor.firstChild, 3);
-      editor.dispatchEvent(new window.InputEvent("input", { bubbles: true, isComposing: true }));
-      await settle();
-      if (!afterComposition) key(editor, "Enter", { isComposing: true });
-      editor.dispatchEvent(new window.CompositionEvent("compositionend", { bubbles: true }));
-      if (afterComposition) key(editor, "Enter");
-      await settle();
-    });
-    assert.equal(shadow.activeElement, shadow.querySelector("input"));
-    assert.ok(shadow.querySelector("input"), "One IME Enter selects the quotation template");
-    await act(async () => { key(shadow.querySelector("input"), "Escape"); });
-  }
+  await open();
+  await act(async () => {
+    editor.dispatchEvent(new window.CompositionEvent("compositionstart", { bubbles: true }));
+    editor.textContent = "/견적";
+    window.getSelection().collapse(editor.firstChild, 3);
+    editor.dispatchEvent(new window.InputEvent("input", { bubbles: true, isComposing: true }));
+    key(editor, "Enter", { isComposing: true });
+    editor.dispatchEvent(new window.CompositionEvent("compositionend", { bubbles: true }));
+    await settle();
+  });
+  assert.equal(host.querySelector("input"), null, "IME confirmation must not select a template");
+  await act(async () => { key(editor, "Enter"); });
+  assert.ok(host.querySelector("input"));
+  await act(async () => { key(host.querySelector("input"), "Escape"); });
 
   await open();
   await act(async () => { key(editor, "ArrowDown"); key(editor, "Enter"); });
-  assert.equal(shadow.activeElement, shadow.querySelector("input"));
-  const [name, amount] = shadow.querySelectorAll("input");
-  let leakedMouseEvents = 0;
-  const onMouse = () => { leakedMouseEvents++; };
-  document.addEventListener("mousedown", onMouse);
-  document.addEventListener("click", onMouse);
+  assert.ok(document.activeElement === host.querySelector("input"));
+  const [name, amount] = host.querySelectorAll("input");
   await act(async () => {
-    const header = shadow.querySelector("header");
-    const mouseDown = new window.MouseEvent("mousedown", {
-      bubbles: true, composed: true, cancelable: true,
-    });
-    header.dispatchEvent(mouseDown);
-    assert.equal(mouseDown.defaultPrevented, true);
-    header.dispatchEvent(new window.MouseEvent("click", { bubbles: true, composed: true }));
-    await settle();
-  });
-  await act(async () => {
-    const labelText = shadow.querySelector("label span");
-    const mouseDown = new window.MouseEvent("mousedown", {
-      bubbles: true, composed: true, cancelable: true,
-    });
-    labelText.dispatchEvent(mouseDown);
-    assert.equal(mouseDown.defaultPrevented, true);
-    labelText.dispatchEvent(new window.MouseEvent("click", { bubbles: true, composed: true }));
-    await settle();
-  });
-  assert.equal(leakedMouseEvents, 0);
-  assert.equal(shadow.activeElement, name);
-  assert.ok(shadow.querySelector(".variable-entry"));
-  document.removeEventListener("mousedown", onMouse);
-  document.removeEventListener("click", onMouse);
-
-  let leakedKeys = 0;
-  document.addEventListener("keydown", () => { leakedKeys++; });
-  await act(async () => {
+    const label = host.querySelector("label");
+    const mouseDown = new window.MouseEvent("mousedown", { bubbles: true, cancelable: true });
+    label.dispatchEvent(mouseDown);
+    assert.equal(mouseDown.defaultPrevented, false);
     name.value = "민";
-    name.dispatchEvent(new window.Event("input", { bubbles: true, composed: true }));
-    key(name, "a");
+    name.dispatchEvent(new window.Event("input", { bubbles: true }));
+    const typing = new window.KeyboardEvent("keydown", { key: "a", bubbles: true, cancelable: true });
+    name.dispatchEvent(typing);
+    assert.equal(typing.defaultPrevented, false);
+    const tab = new window.KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    name.dispatchEvent(tab);
+    assert.equal(tab.defaultPrevented, false);
   });
-  assert.equal(leakedKeys, 0);
   assert.equal(name.value, "민");
   await act(async () => {
     name.dispatchEvent(new window.CompositionEvent("compositionstart", { bubbles: true, composed: true }));
     key(name, "Enter", { isComposing: true });
-    shadow.querySelector("form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+    host.querySelector("form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
   });
   assert.equal(inserted.length, 1);
   await act(async () => {
     name.dispatchEvent(new window.CompositionEvent("compositionend", { bubbles: true, composed: true }));
+    // Browsers and page focus handlers can briefly leave focus on body while
+    // moving to another input. This is not a request to dismiss the form.
+    name.blur();
+    await settle();
+    assert.ok(host.querySelector(".variable-entry"));
+    amount.dispatchEvent(new window.MouseEvent("pointerdown", { bubbles: true }));
+    amount.focus();
+    await settle();
     amount.value = "";
     amount.dispatchEvent(new window.Event("input", { bubbles: true, composed: true }));
   });
-  await act(async () => { shadow.querySelector("form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true })); });
+  assert.ok(document.activeElement === amount);
+  assert.ok(host.querySelector(".variable-entry"), "Moving focus between popup inputs keeps the form open");
+  await act(async () => { host.querySelector("form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true })); });
   assert.equal(inserted.at(-1), "민님 원");
   await open();
   await act(async () => { key(editor, "ArrowDown"); key(editor, "Enter"); });
-  await act(async () => { key(shadow.querySelector("input"), "Escape"); });
+  let pageEscapes = 0;
+  const handlePageEscape = (event) => { if (event.key === "Escape") pageEscapes++; };
+  document.addEventListener("keydown", handlePageEscape);
+  await act(async () => { key(host.querySelector("input"), "Escape"); });
+  document.removeEventListener("keydown", handlePageEscape);
+  assert.equal(pageEscapes, 0, "Returning to the list must not trigger the mail page's Escape handling");
   assert.equal(editor.textContent, "/");
   assert.equal(inserted.length, 2);
-  assert.equal(document.activeElement, editor);
-  assert.equal(shadow.host.style.display, "none");
+  assert.equal(host.querySelectorAll('[role="option"]').length, 2);
+  assert.ok(document.activeElement === host.querySelectorAll('[role="option"]')[1]);
+  assert.equal(document.activeElement.getAttribute("aria-selected"), "true");
+  const requestsBeforeCancel = requests;
+  await act(async () => { host.querySelectorAll('[role="option"]')[1].click(); });
+  await act(async () => { host.querySelector('button[type="button"]').click(); });
+  assert.equal(host.querySelectorAll('[role="option"]').length, 2, "Cancel returns to the previous list");
+  assert.ok(document.activeElement === host.querySelectorAll('[role="option"]')[1]);
+  assert.equal(requests, requestsBeforeCancel, "Returning to the list does not reload templates");
+  await act(async () => { key(document.activeElement, "Escape"); });
+  assert.ok(document.activeElement === editor);
+  assert.equal(host.style.display, "none");
+
+  await open();
+  await act(async () => { key(editor, "ArrowDown"); key(editor, "Enter"); });
+  const outside = document.createElement("input");
+  document.body.append(outside);
+  await act(async () => { outside.focus(); });
+  assert.equal(host.style.display, "none", "Keyboard focus outside closes the popup");
+  outside.remove();
+
+  await open();
+  await act(async () => { key(editor, "ArrowDown"); key(editor, "Enter"); });
+  await act(async () => {
+    document.body.dispatchEvent(new window.MouseEvent("pointerdown", { bubbles: true }));
+  });
+  assert.equal(host.style.display, "none", "Pointer interaction outside closes the popup");
 
   await open();
   await act(async () => { key(editor, "Enter"); });
   assert.equal(editor.textContent, "일반 본문");
   assert.equal(window.getSelection().isCollapsed, true);
 
+  await act(async () => {
+    editor.focus();
+    editor.innerHTML = '<span>앞 문장 </span><b>/</b><i>1</i><span> 뒷 문장</span>';
+    const caret = document.createRange();
+    caret.setStart(editor.querySelector("i").firstChild, 1);
+    caret.collapse(true);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(caret);
+    editor.dispatchEvent(new window.Event("input", { bubbles: true }));
+    await settle();
+  });
+  await act(async () => { host.querySelector('[role="option"]').click(); });
+  assert.equal(editor.textContent, "일반 본문", "The existing insertion API replaces the full body");
+  assert.ok(document.activeElement === editor);
+  assert.equal(window.getSelection().isCollapsed, true);
+
+  await open();
+  await act(async () => { key(editor, "ArrowDown"); key(editor, "Enter"); });
+  await act(async () => {
+    editor.textContent = "메일 페이지에서 갱신한 본문";
+    host.querySelector("form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+  });
+  assert.equal(editor.textContent, "메일 페이지에서 갱신한 본문", "A stale trigger must not overwrite the updated editor");
+  assert.equal(host.style.display, "none");
+
+  const multilineEditor = document.createElement("div");
+  multilineEditor.setAttribute("contenteditable", "true");
+  multilineEditor.tabIndex = 0;
+  multilineEditor.textContent = "앞 / 뒤";
+  document.body.append(multilineEditor);
+  const multiline = ' <b>본문</b>  & "문자"\r\n\r\n 다음 줄 \n';
+  assert.equal(insertTextToEditor(multilineEditor, encodeEditorText(multiline)).isInserted, true);
+  const visibleText = [...multilineEditor.childNodes].map((node) => node.nodeName === "BR" ? "\n" : node.textContent).join("");
+  assert.equal(visibleText, encodeEditorText(multiline));
+  assert.equal(multilineEditor.querySelectorAll("br").length, 3, "Empty and trailing lines are preserved");
+  assert.equal(multilineEditor.querySelector("b"), null, "Template HTML remains literal text");
+  assert.match(multilineEditor.innerHTML, /&lt;b&gt;본문&lt;\/b&gt;/);
+  assert.equal(window.getSelection().isCollapsed, true);
+  assert.equal(window.getSelection().getRangeAt(0).endContainer, multilineEditor);
+  assert.equal(window.getSelection().getRangeAt(0).endOffset, multilineEditor.childNodes.length);
+  multilineEditor.remove();
+
+  const { revealPopupOption } = await import(moduleUrl("../packages/mini-popup/src/dom/popup.ts"));
+  const scrollFixture = document.createElement("div");
+  scrollFixture.innerHTML = '<div role="listbox" style="scroll-padding-top: 10px; scroll-padding-bottom: 12px"><button role="option"></button><button role="option"></button><button role="option"></button></div>';
+  document.body.append(scrollFixture);
+  const paddedList = scrollFixture.firstElementChild;
+  const middleOption = paddedList.children[1];
+  Object.defineProperty(paddedList, "clientHeight", { value: 100 });
+  paddedList.getBoundingClientRect = () => ({ top: 100, bottom: 200 });
+  middleOption.getBoundingClientRect = () => ({ top: 180, bottom: 210 });
+  revealPopupOption(scrollFixture, 1);
+  assert.equal(paddedList.scrollTop, 22, "Middle options leave the configured bottom spacing");
+  middleOption.getBoundingClientRect = () => ({ top: 95, bottom: 125 });
+  revealPopupOption(scrollFixture, 1);
+  assert.equal(paddedList.scrollTop, 7, "Middle options leave the configured top spacing");
+  middleOption.getBoundingClientRect = () => ({ top: 115, bottom: 150 });
+  revealPopupOption(scrollFixture, 1);
+  assert.equal(paddedList.scrollTop, 7, "Visible options with sufficient spacing do not scroll");
+  scrollFixture.remove();
+
+  assert.ok(delivered.every(({ tabId, options }) => tabId === 42 && options.frameId === 3), "Popup requests return to their sender tab and frame, not the active tab");
+  const insertionRequest = { src: "CONTENT", dst: "BACKGROUND", method: "PUT", path: "/editor/insert-text", data: { text: "body" } };
+  const beforeRejected = delivered.length;
+  assert.equal(await backgroundRouter(insertionRequest, { ...contentSender, url: "https://example.com/" }), undefined);
+  assert.equal((await backgroundRouter({ ...insertionRequest, data: { text: null } }, contentSender)).statusCode, 400);
+  assert.equal(delivered.length, beforeRejected);
+  await open();
+  await act(async () => { key(editor, "ArrowDown"); key(editor, "Enter"); });
+  failInsertion = true;
+  await act(async () => { host.querySelector("form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true })); });
+  assert.match(host.querySelector('[role="status"]').textContent, /삽입하지 못했습니다/);
+  assert.ok(host.querySelector("input"), "A failed request keeps variable values available for retry");
+  failInsertion = false;
+  let finishInsertion;
+  holdInsertion = new Promise((resolve) => { finishInsertion = resolve; });
+  const beforePending = delivered.length;
+  await act(async () => {
+    host.querySelector("form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+    host.querySelector("form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+  });
+  assert.equal(delivered.length, beforePending + 1, "Only one insertion request is allowed at a time");
+  assert.equal(host.querySelector("input").disabled, true);
+  await act(async () => { finishInsertion(); await settle(); });
+  holdInsertion = undefined;
+  assert.equal(host.style.display, "none");
+
+  const pageSender = { id: "extension", url: "chrome-extension://extension/src/page/index.html" };
+  const statusRequest = { src: "PAGE", dst: "BACKGROUND", method: "GET", path: "/editor/status", data: { vendorName: "GOOGLE" } };
+  assert.equal((await backgroundRouter(statusRequest, pageSender)).statusCode, 200);
+  assert.equal(await backgroundRouter({ ...statusRequest, src: "CONTENT" }, contentSender), undefined);
+  const updateRequest = { src: "CONTENT", dst: "BACKGROUND", method: "PUT", path: "/editor/update-status", data: { vendorName: "GOOGLE", status: { isEditable: true } } };
+  assert.equal((await backgroundRouter(updateRequest, contentSender)).statusCode, 200);
+  assert.equal(await backgroundRouter({ ...updateRequest, src: "PAGE" }, pageSender), undefined);
+  assert.equal(await backgroundRouter({ ...updateRequest, data: { vendorName: "NAVER", status: { isEditable: true } } }, contentSender), undefined);
+  assert.equal((await backgroundRouter({ ...updateRequest, data: { vendorName: "GOOGLE", status: { isEditable: "invalid" } } }, contentSender)).statusCode, 400);
+  let pageResponse;
+  await act(async () => { pageResponse = await backgroundRouter({ ...insertionRequest, src: "PAGE", data: { text: "사이드바 본문" } }, pageSender); });
+  assert.equal(pageResponse.statusCode, 200);
+  assert.equal(editor.textContent, "사이드바 본문", "Sidebar requests still replace the full body");
+  assert.equal(delivered.at(-1).tabId, 99);
+  assert.deepEqual(delivered.at(-1).request.data, { text: "사이드바 본문" });
+
+  const normalizedRequest = {
+    src: "BACKGROUND", dst: "CONTENT", method: "PUT", path: "/editor/insert-text",
+    data: { text: "\u200b\u1100\u1161\u11a8 e\u0301  👩🏽‍💻\r\n 다음 " },
+  };
+  const originalRequestText = normalizedRequest.data.text;
+  let normalizedResponse;
+  await act(async () => { normalizedResponse = await contentRouter(normalizedRequest); });
+  assert.equal(normalizedResponse.statusCode, 200);
+  assert.equal([...editor.childNodes].map((node) => node.nodeName === "BR" ? "\n" : node.textContent).join(""), "각 é\u00a0\u00a0👩🏽‍💻\n\u00a0다음\u00a0");
+  assert.equal(normalizedRequest.data.text, originalRequestText, "Normalization does not mutate the request");
+  for (const text of [null, 123, {}, "\u200b"]) {
+    assert.equal((await contentRouter({ ...normalizedRequest, data: { text } })).statusCode, 400);
+  }
+
   failLoad = true;
   await open();
-  assert.match(shadow.querySelector(".message").textContent, /불러오지 못했습니다/);
+  assert.match(host.querySelector(".message").textContent, /불러오지 못했습니다/);
   failLoad = false;
   holdResponse = true;
+  const insertedBeforeLoading = inserted.length;
   await open();
   assert.ok(deferred);
+  await act(async () => { key(editor, "Enter"); deferred(templates); await settle(); });
+  assert.equal(inserted.length, insertedBeforeLoading, "Enter during loading must not queue insertion");
+  assert.equal(host.querySelectorAll('[role="option"]').length, 2);
+  await act(async () => { key(editor, "Escape"); });
+  await open();
   await act(async () => { key(editor, "Escape"); deferred(templates); await settle(); });
-  assert.equal(shadow.host.style.display, "none");
+  assert.equal(host.style.display, "none");
 
   await open();
   const pending = deferred;
   const requestCount = requests;
   await act(async () => { stop(); stop(); stop = () => {}; });
-  assert.equal(shadow.host.isConnected, false);
+  assert.equal(host.isConnected, false);
   await act(async () => {
     pending(templates);
     editor.dispatchEvent(new window.Event("input", { bubbles: true }));
     await settle();
   });
   assert.equal(requests, requestCount);
-  assert.equal(shadow.host.isConnected, false);
+  assert.equal(host.isConnected, false);
 
 });

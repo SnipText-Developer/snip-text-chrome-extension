@@ -1,214 +1,219 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Template, StartPopupOptions } from "../types";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { StartPopupOptions, Template } from "../types";
 import { useEditor } from "./useEditor";
+import { focusPopupOption, getPopupOptionIndex, hidePopup, revealPopupOption } from "../dom/popup";
 
-interface PopupState {
-  open: boolean;
+interface ListState {
+  phase: "list";
   templates: Template[];
   active: number;
-  selectedTemplate: Template | null;
-  message?: string;
-}
-const initialState: PopupState = { open: false, templates: [], active: 0, selectedTemplate: null };
-
-function matchesQuery(template: Template, query: string) {
-  const searchableText = `${template.title} ${template.shortcut} ${template.content}`;
-  return searchableText.normalize("NFC").toLocaleLowerCase().includes(query);
+  autoFocus?: boolean;
 }
 
-function consumeKey(event: KeyboardEvent) {
-  event.preventDefault();
-  event.stopImmediatePropagation();
-}
+type PopupState = (
+  | { phase: "closed" | "loading" | "error"; message?: string }
+  | ListState
+  | { phase: "variables"; template: Template; list: ListState }
+) & { busy?: boolean; error?: string };
 
-interface Actions {
-  choose: (template: Template) => void;
-  select: (index: number) => void;
-  cancel: () => void;
-  insert: (text: string) => void;
-}
+const initialState: PopupState = { phase: "closed" };
 
-export function useMiniPopup(selector: string, getTemplates: StartPopupOptions["getTemplates"], host: HTMLElement, shadow: ShadowRoot) {
+export function useMiniPopup(selector: string, getTemplates: StartPopupOptions["getTemplates"], insertText: StartPopupOptions["insertText"], host: HTMLElement) {
   const [state, setState] = useState(initialState);
-  // Native key events may arrive within the same React batch.
-  const currentState = useRef(state);
   const editor = useEditor(selector);
-  const { anchor } = editor;
-  const composing = useRef(false);
-  const actions = useRef<Actions | null>(null);
+  const loader = useRef(getTemplates);
+  loader.current = getTemplates;
+  const inserter = useRef(insertText);
+  inserter.current = insertText;
 
-  useEffect(() => {
-    let requestVersion = 0;
+  const controller = useMemo(() => {
+    let current: PopupState = initialState;
+    let requestId = 0;
     let disposed = false;
     let dismissed = false;
-    let pendingEnter = false;
-    function setPopupState(next: PopupState) {
-      currentState.current = next;
+    let composing = false;
+    let lastQuery: string | null = null;
+    let lastEditor: HTMLElement | null = null;
+
+    function publish(next: PopupState) {
+      current = next;
       setState(next);
     }
     function close() {
-      pendingEnter = false;
-      requestVersion++;
+      requestId++;
+      lastQuery = null;
+      composing = false;
       editor.clear();
-      host.style.display = "none";
-      setPopupState(initialState);
-    }
-    function insert(text: string) {
-      if (!editor.insertText(text, close)) close();
-    }
-
-    function choose(template: Template) {
-      pendingEnter = false;
-      requestVersion++;
-      if (!anchor.current?.editor.isConnected) return close();
-      if (!template.variables.length) return insert(template.content);
-      setPopupState({ ...currentState.current, selectedTemplate: template });
-    }
-    function select(index: number) {
-      setPopupState({ ...currentState.current, active: index });
+      hidePopup(host);
+      publish(initialState);
     }
     function cancel() {
+      if (current.busy) return;
+      if (current.phase === "variables") {
+        publish({ ...current.list, autoFocus: true });
+        return;
+      }
       dismissed = true;
       editor.restoreFocus(close);
     }
-
-    async function updateTemplates() {
-      if (disposed || dismissed || currentState.current.selectedTemplate || document.activeElement === host) return;
-      const match = editor.findTrigger(composing.current);
-      // Selection can be temporarily unavailable while the IME updates the DOM.
-      if (!match) {
-        if (!composing.current) close();
-        return;
-      }
-      const request = ++requestVersion;
-      setPopupState({ ...initialState, open: true, message: "템플릿 불러오는 중…" });
+    async function insert(text: string) {
+      if (current.busy) return;
+      if (!editor.isInsertionValid()) return close();
+      const id = ++requestId;
+      publish({ ...current, busy: true, error: undefined });
       try {
-        const result = await getTemplates();
-        if (disposed || request !== requestVersion) return;
-        if (!Array.isArray(result)) throw new Error("Invalid template list");
-        const templates = result.filter((template) => matchesQuery(template, match.query));
-        setPopupState({ ...initialState, open: true, templates });
-        if (pendingEnter && !composing.current) {
-          pendingEnter = false;
-          if (templates.length) choose(templates[0]);
-        }
-      } catch {
-        if (disposed || request !== requestVersion) return;
-        pendingEnter = false;
-        setPopupState({ ...currentState.current, message: "템플릿을 불러오지 못했습니다. 다시 입력해주세요." });
-      }
-    }
-    function onInput() {
-      dismissed = false;
-      void updateTemplates();
-    }
-    function onCompositionStart() {
-      composing.current = true;
-      // Keep the list and anchor while the IME temporarily changes selection.
-      // Ignore responses requested before composition started.
-      requestVersion++;
-    }
-    function onCompositionEnd() {
-      composing.current = false;
-      void updateTemplates();
-    }
-    function onKeyDown(event: KeyboardEvent) {
-      if (!anchor.current) return;
-
-      const snapshot = currentState.current;
-      const isConfirmKey = event.key === "Enter" && !event.shiftKey;
-      const isCompositionKey = composing.current || event.isComposing;
-
-      if (isCompositionKey) {
-        if (!snapshot.selectedTemplate && isConfirmKey) {
-          pendingEnter = true;
-          // Keep the default action so the IME can commit the final syllable.
-          event.stopImmediatePropagation();
-          if (!composing.current && !event.isComposing) void updateTemplates();
-        }
-        return;
-      }
-
-      if (event.key === "Escape") {
-        consumeKey(event);
-        if (snapshot.selectedTemplate) cancel();
-        else {
+        await inserter.current(text);
+        if (!disposed && id === requestId) {
           dismissed = true;
           close();
         }
-        return;
-      }
-      if (snapshot.selectedTemplate) return;
-      if (!snapshot.templates.length) {
-        if (isConfirmKey && snapshot.message === "템플릿 불러오는 중…") {
-          consumeKey(event);
-          pendingEnter = true;
+      } catch {
+        if (!disposed && id === requestId) {
+          publish({ ...current, busy: false, error: "삽입하지 못했습니다. 다시 시도해주세요." });
         }
+      }
+    }
+    function choose(template: Template) {
+      if (current.phase !== "list" || current.busy) return;
+      if (!editor.anchor.current?.editor.isConnected) return close();
+      requestId++;
+      lastQuery = null;
+      if (!template.variables.length) return insert(template.content);
+      publish({ phase: "variables", template, list: current });
+    }
+    function select(index: number) {
+      if (current.phase === "list" && index >= 0 && index < current.templates.length) {
+        publish({ ...current, active: index });
+      }
+    }
+    function isEditorEvent(event: Event) {
+      return event.target instanceof Element &&
+        !host.contains(event.target) && event.target.closest(selector) !== null;
+    }
+    async function refresh() {
+      if (disposed || dismissed || current.busy || current.phase === "variables" || host.contains(document.activeElement)) return;
+      const match = editor.findTrigger(composing);
+      if (!match) {
+        if (!composing) close();
         return;
       }
+      if (match.query === lastQuery && match.editor === lastEditor) return;
+      lastQuery = match.query;
+      lastEditor = match.editor;
+      const id = ++requestId;
+      publish({ phase: "loading", message: "템플릿 불러오는 중…" });
+      try {
+        const result = await loader.current();
+        if (disposed || id !== requestId) return;
+        if (!Array.isArray(result)) throw new Error("Invalid template list");
+        const templates = result.filter((template) =>
+          `${template.title} ${template.shortcut} ${template.content}`
+            .normalize("NFC").toLocaleLowerCase().includes(match.query),
+        );
+        publish({ phase: "list", templates, active: 0 });
+      } catch {
+        if (disposed || id !== requestId) return;
+        lastQuery = null;
+        publish({ phase: "error", message: "템플릿을 불러오지 못했습니다. 다시 입력해주세요." });
+      }
+    }
+    function onInput(event: Event) {
+      if (!isEditorEvent(event)) return;
+      dismissed = false;
+      void refresh();
+    }
+    function onCompositionStart(event: Event) {
+      if (current.busy || !isEditorEvent(event)) return;
+      composing = true;
+      lastQuery = null;
+      requestId++;
+    }
+    function onCompositionEnd(event: Event) {
+      if (current.busy || !isEditorEvent(event)) return;
+      composing = false;
+      void refresh();
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (current.phase === "closed" || current.busy) return;
+      const inPopup = event.target instanceof Node && host.contains(event.target);
+      if (!inPopup && !isEditorEvent(event)) return;
+      if (event.isComposing || (!inPopup && composing)) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        // The popup consumes Escape; do not let the mail page dismiss it too.
+        event.stopPropagation();
+        cancel();
+        return;
+      }
+      // Focused buttons keep native activation; only list arrows are shared.
+      if (current.phase !== "list" || !current.templates.length) return;
+      if (!inPopup && event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        choose(current.templates[current.active]);
+      } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        const index = inPopup ? getPopupOptionIndex(host, event.target) : current.active;
+        if (index < 0) return;
+        event.preventDefault();
+        const step = event.key === "ArrowDown" ? 1 : -1;
+        const next = (index + step + current.templates.length) % current.templates.length;
+        select(next);
+        if (inPopup) focusPopupOption(host, next);
+        revealPopupOption(host, next);
+      }
+    }
+    function onPointerDown(event: PointerEvent) {
+      if (current.phase === "closed" || current.busy || (event.target instanceof Node && host.contains(event.target))) return;
+      dismissed = true;
+      close();
+    }
+    function onFocusIn(event: FocusEvent) {
+      const target = event.target;
+      if (current.phase === "closed" || current.busy || !(target instanceof Node) ||
+        host.contains(target) || editor.anchor.current?.editor.contains(target)) return;
+      dismissed = true;
+      close();
+    }
 
-      switch (event.key) {
-        case "ArrowDown":
-        case "ArrowUp": {
-          consumeKey(event);
-          const direction = event.key === "ArrowDown" ? 1 : -1;
-          const count = snapshot.templates.length;
-          select((snapshot.active + direction + count) % count);
-          break;
-        }
-        case "Enter":
-          if (!isConfirmKey) return;
-          consumeKey(event);
-          choose(snapshot.templates[snapshot.active]);
-          break;
-      }
-    }
-    function onMouseDown(event: MouseEvent) {
-      if (!event.composedPath().includes(host)) close();
-    }
-    function onFocusOut() {
-      queueMicrotask(() => {
-        if (disposed) return;
-        const activeElement = document.activeElement;
-        const editorElement = anchor.current?.editor;
-        const focusedInEditor = activeElement === editorElement ||
-          (activeElement !== null && editorElement?.contains(activeElement));
-        const focusedInPopup = activeElement === host || shadow.activeElement !== null;
-        if (!focusedInEditor && !focusedInPopup) close();
-      });
-    }
-    actions.current = { choose, select, cancel, insert };
-    document.addEventListener("input", onInput);
-    document.addEventListener("selectionchange", updateTemplates);
-    document.addEventListener("compositionstart", onCompositionStart);
-    document.addEventListener("compositionend", onCompositionEnd);
-    document.addEventListener("mousedown", onMouseDown);
-    document.addEventListener("focusout", onFocusOut);
-    window.addEventListener("keydown", onKeyDown, true);
-    return () => {
-      disposed = true;
-      requestVersion++;
-      actions.current = null;
-      editor.clear();
-      composing.current = false;
-      host.style.display = "none";
-      document.removeEventListener("input", onInput);
-      document.removeEventListener("selectionchange", updateTemplates);
-      document.removeEventListener("compositionstart", onCompositionStart);
-      document.removeEventListener("compositionend", onCompositionEnd);
-      document.removeEventListener("mousedown", onMouseDown);
-      document.removeEventListener("focusout", onFocusOut);
-      window.removeEventListener("keydown", onKeyDown, true);
+    return {
+      choose, select, cancel, insert,
+      subscribe() {
+        disposed = false;
+        const listeners = new AbortController();
+        const { signal } = listeners;
+        document.addEventListener("input", onInput, { signal });
+        document.addEventListener("selectionchange", refresh, { signal });
+        document.addEventListener("compositionstart", onCompositionStart, { signal });
+        document.addEventListener("compositionend", onCompositionEnd, { signal });
+        // Mail editors may stop key events before they bubble to document.
+        window.addEventListener("keydown", onKeyDown, { capture: true, signal });
+        document.addEventListener("pointerdown", onPointerDown, { signal });
+        document.addEventListener("focusin", onFocusIn, { signal });
+        return () => {
+          disposed = true;
+          requestId++;
+          listeners.abort();
+          editor.clear();
+          hidePopup(host);
+        };
+      },
     };
-  }, [editor, anchor, getTemplates, host, shadow]);
+  }, [editor, host, selector]);
+
+  useEffect(() => controller.subscribe(), [controller]);
 
   return {
-    ...state,
-    anchor,
-    onChoose: useCallback((template: Template) => actions.current?.choose(template), []),
-    onActiveChange: useCallback((index: number) => actions.current?.select(index), []),
-    onCancel: useCallback(() => actions.current?.cancel(), []),
-    onInsert: useCallback((text: string) => actions.current?.insert(text), []),
-    isComposing: useCallback(() => composing.current, []),
+    busy: state.busy,
+    error: state.error,
+    templates: state.phase === "list" ? state.templates : [],
+    active: state.phase === "list" ? state.active : 0,
+    autoFocus: state.phase === "list" && state.autoFocus,
+    selectedTemplate: state.phase === "variables" ? state.template : null,
+    message: "message" in state ? state.message : undefined,
+    open: state.phase !== "closed",
+    anchor: editor.anchor,
+    onChoose: controller.choose,
+    onActiveChange: controller.select,
+    onCancel: controller.cancel,
+    onInsert: controller.insert,
   };
 }

@@ -1,3 +1,4 @@
+import { normalizeEditorText } from "../../../utils/editor-text";
 import type { EditorObserver } from "./editor-observer";
 
 export class EditorMutationObserver implements EditorObserver {
@@ -37,7 +38,7 @@ export class EditorMutationObserver implements EditorObserver {
   getEditorStatus() {
     return {
       isEditable: this.isEditable,
-      text: this.currentEditor?.textContent?.replace(/\u200B/g, "").normalize("NFC") ?? "",
+      text: normalizeEditorText(this.currentEditor?.textContent),
     };
   }
 
