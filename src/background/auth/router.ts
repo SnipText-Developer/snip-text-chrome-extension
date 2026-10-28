@@ -6,7 +6,7 @@ export const router = async (
   req: MessageRequest,
   sender: chrome.runtime.MessageSender,
 ): Promise<MessageResponse | void> => {
-  if (req.dst !== "BACKGROUND" || !isPageSender(req, sender)) return;
+  if (!isPageSender(req, sender)) return;
 
   try {
     if (req.path !== "/auth/token") return;
