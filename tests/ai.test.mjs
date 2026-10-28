@@ -37,6 +37,33 @@ test("AI tone correction prefixes the stored editor text and validates callers",
   }
   assert.deepEqual(await router({ ...request, data: { tone: "격식", vendorName: "NAVER", text: "요청 본문" } }, content), received, "CONTENT uses its sender vendor and stored body");
   assert.equal((await router({ ...request, src: "PAGE" }, page)).statusCode, 400);
+  await service.updateEditorStatus("GOOGLE", { text: "본문 /톤교정" });
+  assert.equal((await router(request, content)).data.text, "(톤교정)본문 ");
+  await service.updateEditorStatus("GOOGLE", { text: "본문/톤교정" });
+  assert.equal((await router(request, content)).data.text, "(톤교정)본문");
+  for (const command of ["/톤", "/톤교", "/톤교정"]) {
+    await service.updateEditorStatus("GOOGLE", { text: `본문${command}  ` });
+    assert.equal((await router(request, content)).data.text, "(톤교정)본문");
+    await service.updateEditorStatus("GOOGLE", { text: command });
+    assert.equal((await router(request, content)).statusCode, 400);
+  }
+  for (const text of ["본문/톤ㅇ", "본문/톤교정안내", "본문/다른예약어", "/톤교정 뒤에 본문"]) {
+    await service.updateEditorStatus("GOOGLE", { text });
+    assert.equal((await router(request, content)).data.text, `(톤교정)${text}`);
+  }
+  await service.updateEditorStatus("GOOGLE", { text: "/톤교정" });
+  assert.equal((await router(request, content)).statusCode, 400);
   await service.updateEditorStatus("GOOGLE", { text: " " });
   assert.equal((await router(request, content)).statusCode, 400);
+});
+
+test("AI service validates inputs independently of the router", async (t) => {
+  const { service: aiService, AiValidationError } = await import(moduleUrl("../src/background/ai/service.ts"));
+  await service.updateEditorStatus("NAVER", { text: "안녕하세요/톤교" });
+  t.after(() => service.updateEditorStatus("NAVER", { text: "" }));
+  assert.deepEqual(await aiService.correctTone({ vendorName: "NAVER", tone: "공지", removeCommand: true }), { text: "(톤교정)안녕하세요" });
+  assert.deepEqual(await aiService.correctTone({ vendorName: "NAVER", tone: "공지" }), { text: "(톤교정)안녕하세요/톤교" });
+  for (const input of [{ vendorName: "INVALID", tone: "공지" }, { vendorName: "NAVER", tone: " " }, { vendorName: "NAVER", tone: 1 }]) {
+    await assert.rejects(aiService.correctTone(input), AiValidationError);
+  }
 });

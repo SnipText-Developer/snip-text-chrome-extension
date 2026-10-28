@@ -314,4 +314,16 @@ CR 단독, 탭, 기존 NBSP는 그대로 유지합니다. Range 삽입 중 예�
 - 빈 본문: `400`, `{ msg: "교정할 본문을 작성해주세요." }`
 - 에디터 상태 없음: `404`
 
-본문은 observer가 BACKGROUND에 전달해 저장한 에디터 상태에서 읽습니다. 요청의 `text`는 사용하지 않습니다. 현재 실제 교정 대신 본문 앞에 `(톤교정)`을 붙여 반환하며, 에디터 본문을 변경하지 않습니다. 실제 교정 API 연결 지점은 `src/background/ai/router.ts`의 TODO입니다.
+본문은 observer가 BACKGROUND에 전달해 저장한 에디터 상태에서 읽습니다. 요청의 `text`는 사용하지 않습니다. CONTENT 요청은 본문 끝의 `/톤`, `/톤교`, `/톤교정` 예약어와 뒤따르는 공백을 제외합니다. 현재 실제 교정 대신 본문 앞에 `(톤교정)`을 붙여 반환하며, 에디터 본문을 변경하지 않습니다. 실제 교정 API 연결 지점은 `src/background/ai/service.ts`의 TODO입니다. 라우터는 발신자 검증과 응답 변환을, 서비스는 입력 검증·본문 조회·예약어 제거·교정을 담당합니다.
+
+### GET `/editor/text`
+
+- 호출자: PAGE 또는 CONTENT
+- 목적지: BACKGROUND
+- CONTENT 요청 `data`: `{}` (메일 서비스는 실제 발신자에서 결정)
+- PAGE 요청 `data`: `{ vendorName: VendorName }`
+- 성공: `200`, `{ text: string }` (빈 문자열도 허용)
+- PAGE의 vendor 누락·잘못된 값: `400`
+- 저장된 에디터 상태 없음: `404`
+
+BACKGROUND의 에디터 서비스에서 observer가 전달해 저장한 본문을 읽어 응답합니다. CONTENT로 메시지를 다시 보내거나 활성 탭을 조회하지 않습니다. 본문은 메일 서비스별 저장 상태이므로 observer 갱신 시차가 있으며 탭·프레임별 실시간 DOM 스냅샷은 아닙니다.

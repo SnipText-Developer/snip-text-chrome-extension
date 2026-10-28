@@ -1,3 +1,8 @@
+#snip-text-mini-popup button[aria-selected="true"] {
+  background: #d9d9d9;
+  border-radius: 0.625rem;
+}
+
 #snip-text-mini-popup button:focus,
 #snip-text-mini-popup input:focus {
   outline: none;

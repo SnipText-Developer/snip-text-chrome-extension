@@ -1,5 +1,5 @@
 import { startPopup } from "@snip-text/mini-popup";
-import { insertTemplate } from "../insert-template";
+import { createMiniPopupActions } from "../mini-popup-actions";
 import { EditorMutationObserver } from "./observer/editor-mutation-observer";
 import { EditorPollingObserver } from "./observer/editor-polling-observer";
 import { EditorCombinedObserver } from "./observer/editor-combined-observer";
@@ -65,23 +65,7 @@ function startEditorObserver({
   observer.start();
   startPopup({
     selector,
-    insertText: insertTemplate,
-    getTemplates: async () => {
-      const response = await sendMessage({
-        src: "CONTENT",
-        dst: "BACKGROUND",
-        method: "GET",
-        path: "/template/list",
-        data: {},
-      });
-      if (
-        response?.statusCode !== 200 ||
-        !Array.isArray(response.data?.templates)
-      ) {
-        throw new Error("템플릿을 불러오지 못했습니다.");
-      }
-      return response.data.templates;
-    },
+    ...createMiniPopupActions(vendorName, () => observer.getEditorStatus()),
   });
 
   return observer;

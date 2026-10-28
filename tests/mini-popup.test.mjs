@@ -52,8 +52,9 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   const { startPopup } = await import(moduleUrl("../packages/mini-popup/src/index.ts"));
   const { router: backgroundRouter } = await import(moduleUrl("../src/background/editor/router/router.ts"));
   const { createEditorRouter } = await import(moduleUrl("../src/content/editor-router.ts"));
-  const { insertTemplate } = await import(moduleUrl("../src/content/controller/insert-template.ts"));
+  const { insertTemplate } = await import(moduleUrl("../src/content/controller/mini-popup-actions.ts"));
   const { insertTextToEditor } = await import(moduleUrl("../src/content/controller/insert-text.ts"));
+  const { getEditorText } = await import(moduleUrl("../src/content/controller/mini-popup-actions.ts"));
   const contentRouter = createEditorRouter({
     vendorName: "GOOGLE", getEditor: () => editor,
     getEditorStatus: () => ({ text: editor.textContent }),
@@ -75,14 +76,24 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
         if (holdInsertion) await holdInsertion;
         if (failInsertion) return { statusCode: 500, data: {} };
         const response = await contentRouter(request);
-        if (response?.statusCode === 200) inserted.push(request.data.text);
+        if (response?.statusCode === 200 && request.method === "PUT") inserted.push(request.data.text);
         return response;
       },
     },
   };
   t.after(() => { globalThis.chrome = previousChrome; });
+  const toneRequests = [];
+  let failTone = false;
+  let resolveTone;
+  let holdTone = false;
+  const correctTone = async (tone) => {
+    toneRequests.push(tone);
+    if (failTone) throw new Error("톤 교정 실패");
+    if (holdTone) return new Promise((resolve) => { resolveTone = resolve; });
+    return "(톤교정)작성한 본문";
+  };
   let stop;
-  await act(async () => { stop = startPopup({ selector: "#editor", getTemplates, insertText: insertTemplate }); });
+  await act(async () => { stop = startPopup({ selector: "#editor", getTemplates, insertText: insertTemplate, correctTone, getEditorText }); });
   const host = document.querySelector("#snip-text-mini-popup");
   assert.equal(host.shadowRoot, null);
   t.after(async () => { await act(async () => { stop(); }); dom.window.close(); });
@@ -395,7 +406,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   assert.equal(window.getSelection().getRangeAt(0).endOffset, multilineEditor.childNodes.length);
   multilineEditor.remove();
 
-  const { revealPopupOption } = await import(moduleUrl("../packages/mini-popup/src/dom/popup.ts"));
+  const { createPopupDom } = await import(moduleUrl("../packages/mini-popup/src/dom/popup.ts"));
   const scrollFixture = document.createElement("div");
   scrollFixture.innerHTML = '<div role="listbox" style="scroll-padding-top: 10px; scroll-padding-bottom: 12px"><button role="option"></button><button role="option"></button><button role="option"></button></div>';
   document.body.append(scrollFixture);
@@ -404,13 +415,13 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   Object.defineProperty(paddedList, "clientHeight", { value: 100 });
   paddedList.getBoundingClientRect = () => ({ top: 100, bottom: 200 });
   middleOption.getBoundingClientRect = () => ({ top: 180, bottom: 210 });
-  revealPopupOption(scrollFixture, 1);
+  createPopupDom(scrollFixture).revealOption(1);
   assert.equal(paddedList.scrollTop, 22, "Middle options leave the configured bottom spacing");
   middleOption.getBoundingClientRect = () => ({ top: 95, bottom: 125 });
-  revealPopupOption(scrollFixture, 1);
+  createPopupDom(scrollFixture).revealOption(1);
   assert.equal(paddedList.scrollTop, 7, "Middle options leave the configured top spacing");
   middleOption.getBoundingClientRect = () => ({ top: 115, bottom: 150 });
-  revealPopupOption(scrollFixture, 1);
+  createPopupDom(scrollFixture).revealOption(1);
   assert.equal(paddedList.scrollTop, 7, "Visible options with sufficient spacing do not scroll");
   scrollFixture.remove();
 
@@ -472,6 +483,106 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
     assert.equal((await contentRouter({ ...normalizedRequest, data: { text } })).statusCode, 400);
   }
 
+  const textRequest = { src: "CONTENT", dst: "BACKGROUND", method: "GET", path: "/editor/text", data: {} };
+  const { service: editorService } = await import(moduleUrl("../src/background/editor/service.ts"));
+  await editorService.updateEditorStatus("GOOGLE", { text: "저장된 본문" });
+  const deliveredBeforeRead = delivered.length;
+  assert.equal((await backgroundRouter(textRequest, contentSender)).data.text, "저장된 본문");
+  assert.equal(await backgroundRouter(textRequest, { ...contentSender, url: "https://example.com/" }), undefined);
+  assert.equal((await backgroundRouter({ ...textRequest, src: "PAGE", data: { vendorName: "GOOGLE" } }, pageSender)).data.text, "저장된 본문");
+  assert.equal((await backgroundRouter({ ...textRequest, src: "PAGE" }, pageSender)).statusCode, 400);
+  assert.equal(delivered.length, deliveredBeforeRead, "Text reads must not send messages to CONTENT");
+  await editorService.updateEditorStatus("GOOGLE", { text: "" });
+  assert.equal((await backgroundRouter(textRequest, contentSender)).data.text, "", "Empty stored bodies are valid responses");
+
+  async function openTone(text = "작성한 본문 /톤교정") {
+    await act(async () => {
+      editor.focus();
+      editor.textContent = text;
+      const range = document.createRange();
+      range.selectNodeContents(editor);
+      range.collapse(false);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+      await editorService.updateEditorStatus("GOOGLE", { text });
+      editor.dispatchEvent(new window.Event("input", { bubbles: true }));
+      await settle();
+    });
+    assert.match(host.querySelector('[role="option"]').textContent, /톤교정/);
+    await act(async () => { key(editor, "Enter"); });
+    assert.equal(host.querySelectorAll('[role="option"]').length, 7);
+    assert.equal(host.querySelectorAll('.popup-group > .popup').length, 2);
+    assert.equal(document.activeElement === host.querySelector('.tone-menu [role="option"]'), true, "Enter moves focus into the right tone menu");
+  }
+  await openTone();
+  await act(async () => { key(document.activeElement, "ArrowUp"); });
+  assert.equal(document.activeElement.textContent, "감성/에세이");
+  assert.equal(window.getComputedStyle(document.activeElement).backgroundColor, "rgb(217, 217, 217)", "Keyboard selection remains visibly highlighted in the tone menu");
+
+  assert.notEqual(host.style.display, "none");
+  await act(async () => { key(document.activeElement, "ArrowDown"); });
+  assert.equal(document.activeElement.textContent, "상사/외부용");
+  failTone = true;
+  await act(async () => host.querySelector('[role="option"]').click());
+  assert.match(host.querySelector('[role="status"]').textContent, /톤 교정 실패/);
+  failTone = false;
+  await act(async () => host.querySelectorAll('[role="option"]')[6].dispatchEvent(new window.Event("pointermove", { bubbles: true })));
+  await act(async () => { key(document.activeElement, "Enter"); });
+  assert.equal(inserted.at(-1), "(톤교정)작성한 본문");
+  assert.equal(host.style.display, "none");
+  assert.deepEqual(toneRequests, ["상사/외부용", "상사/외부용"]);
+
+  await openTone("작성한 본문/톤교정");
+  holdTone = true;
+  const countBeforeTone = inserted.length;
+  await act(async () => host.querySelector('[role="option"]').click());
+  assert.equal(host.querySelector('.popup-spinner'), null, "Fast requests do not flash a spinner");
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 300)));
+  assert.ok(host.querySelector('.popup-spinner'), "Delayed tone requests show a spinner");
+  await act(async () => {
+    editor.textContent = "요청 중 변경한 본문";
+    await editorService.updateEditorStatus("GOOGLE", { text: editor.textContent });
+    resolveTone("교정 결과");
+    await settle();
+  });
+  assert.equal(inserted.length, countBeforeTone, "Late correction must not overwrite a changed editor");
+  assert.equal(host.querySelector('.popup-spinner'), null, "Spinner clears when the request finishes");
+  assert.match(host.querySelector('[role="status"]').textContent, /작성 창이 변경/);
+  await act(async () => document.body.dispatchEvent(new window.MouseEvent("pointerdown", { bubbles: true })));
+  holdTone = false;
+
+  await openTone();
+  await act(async () => {
+    editor.textContent = "작성한 본문 톤교정";
+    editor.dispatchEvent(new window.Event("input", { bubbles: true }));
+  });
+  assert.equal(host.style.display, "none", "Removing the slash closes the tone menu");
+
+  async function editCommand(text) {
+    await act(async () => {
+      editor.focus();
+      editor.textContent = text;
+      const caret = document.createRange();
+      caret.selectNodeContents(editor);
+      caret.collapse(false);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(caret);
+      editor.dispatchEvent(new window.Event("input", { bubbles: true }));
+      await settle();
+    });
+  }
+  for (const prefix of ["", "작성한 본문", "작성한 본문 "]) {
+    await editCommand(prefix + "/톤교");
+    assert.match(host.querySelector('[role="option"]').textContent, /톤교정/);
+    await editCommand(prefix + "/톤ㅇ");
+    assert.equal(host.querySelector('.reserved-command'), null, "An invalid tone prefix must remove the reserved command");
+    assert.equal(host.querySelector('.tone-menu'), null);
+  }
+  await openTone();
+  await editCommand("작성한 본문/톤ㅇ");
+  assert.equal(host.querySelector('.tone-menu'), null, "Editing the command also leaves the tone submenu");
+  assert.equal(host.style.display, "none");
+
   failLoad = true;
   await open();
   assert.match(host.querySelector(".message").textContent, /불러오지 못했습니다/);
@@ -480,6 +591,15 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   const insertedBeforeLoading = inserted.length;
   await open();
   assert.ok(deferred);
+  const deletedTriggerResponse = deferred;
+  await act(async () => {
+    editor.textContent = "본문";
+    editor.dispatchEvent(new window.Event("input", { bubbles: true }));
+    deletedTriggerResponse(templates);
+    await settle();
+  });
+  assert.equal(host.style.display, "none", "Late results must not reopen a popup after slash deletion");
+  await open();
   await act(async () => { key(editor, "Enter"); deferred(templates); await settle(); });
   assert.equal(inserted.length, insertedBeforeLoading, "Enter during loading must not queue insertion");
   assert.equal(host.querySelectorAll('[role="option"]').length, 2);

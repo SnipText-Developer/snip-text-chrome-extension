@@ -7,10 +7,10 @@ import { createPopupHost } from "./dom/index";
 export { getTemplateVariables } from "./utils/text";
 
 // One React root per content-script document; effects manage editor events.
-export function startPopup({ selector, getTemplates, insertText }: StartPopupOptions): () => void {
+export function startPopup({ selector, getTemplates, insertText, correctTone, getEditorText }: StartPopupOptions): () => void {
   const { element: host, remove } = createPopupHost();
   const root = createRoot(host);
-  root.render(createElement(MiniPopup, { selector, getTemplates, insertText, host }));
+  root.render(createElement(MiniPopup, { selector, getTemplates, insertText, correctTone, getEditorText, host }));
   let stopped = false;
   return () => {
     if (stopped) return;

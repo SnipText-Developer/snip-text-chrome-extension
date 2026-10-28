@@ -13,4 +13,6 @@ export interface StartPopupOptions {
   selector: string;
   getTemplates: () => Promise<Template[]>;
   insertText: (text: string) => Promise<void>;
+  correctTone?: (tone: string) => Promise<string>;
+  getEditorText?: () => Promise<string>;
 }

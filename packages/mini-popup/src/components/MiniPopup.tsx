@@ -1,4 +1,6 @@
-import { useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
+import { ToneMenu } from "./ToneMenu";
+import { toneCommand } from "../commands";
 import { TemplateList } from "./TemplateList";
 import { TemplateVariablesForm } from "./TemplateVariablesForm";
 import { useMiniPopup } from "../hooks/useMiniPopup";
@@ -14,10 +16,13 @@ interface Props extends StartPopupOptions {
   host: HTMLElement;
 }
 
-export function MiniPopup({ selector, getTemplates, insertText, host }: Props) {
+export function MiniPopup({ selector, getTemplates, insertText, correctTone, getEditorText, host }: Props) {
   const popup = useRef<HTMLDivElement>(null);
-  const state = useMiniPopup(selector, getTemplates, insertText, host);
+  const state = useMiniPopup(selector, getTemplates, insertText, host, correctTone, getEditorText);
   usePopupPosition(state.dom, popup, state.open);
+  useLayoutEffect(() => {
+    if (state.choosingTone) state.dom.popup.focusOption(0);
+  }, [state.choosingTone, state.dom]);
   const selected = state.selectedTemplate;
 
   return (
@@ -26,9 +31,17 @@ export function MiniPopup({ selector, getTemplates, insertText, host }: Props) {
       {state.open && (
         <div
           ref={popup}
-          className={selected ? "popup variable-entry" : "popup"}
+          className="popup-group"
           onMouseDown={preserveEditorSelection}>
-          <header>{selected ? `${selected.shortcut} 변수 입력` : "템플릿"}</header>
+          {state.choosingTone && (
+            <div className="popup tone-command-card">
+              <div className="tone-command-row">
+                <strong>{toneCommand.shortcut}</strong><span>{toneCommand.content}</span><span aria-hidden="true">&gt;</span>
+              </div>
+            </div>
+          )}
+          <div className={state.choosingTone ? "popup tone-menu" : selected ? "popup variable-entry" : "popup"}>
+          <header hidden={state.choosingTone}>{selected ? `${selected.shortcut} 변수 입력` : "템플릿"}</header>
           {selected ? (
             <TemplateVariablesForm
               key={selected.templateId}
@@ -37,11 +50,14 @@ export function MiniPopup({ selector, getTemplates, insertText, host }: Props) {
               onCancel={state.onCancel}
               onInsert={state.onInsert}
             />
+          ) : state.choosingTone ? (
+            <ToneMenu options={state.templates} active={state.active} busy={state.busy} onChoose={state.onChoose} onActiveChange={state.onActiveChange} />
           ) : <TemplateList {...state} />}
-          {state.error && <p role="status">{state.error}</p>}
+          {state.error && <p className="popup-notice" role="status">{state.error}</p>}
           <footer hidden={!selected} className={selected ? "variables-footer" : undefined}>
             {selected ? "변수 입력 후 삽입 · Esc 취소" : null}
           </footer>
+          </div>
         </div>
       )}
     </>

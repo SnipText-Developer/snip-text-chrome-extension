@@ -1,4 +1,5 @@
 import styles from "./TemplateList.css?inline";
+import { toneCommand } from "../commands";
 import type { Template } from "../types";
 
 interface Props {
@@ -29,6 +30,7 @@ export function TemplateList({
             <button
               key={template.templateId}
               type="button"
+              className={template.templateId === toneCommand.templateId ? "reserved-command" : undefined}
               autoFocus={autoFocus && index === active}
               role="option"
               aria-selected={index === active}
@@ -43,6 +45,7 @@ export function TemplateList({
               <span className="template-text">
                 {template.content.replace(/\s+/g, " ")}
               </span>
+              {template.templateId === toneCommand.templateId && <span aria-hidden="true">&gt;</span>}
             </button>
           ))
         )}

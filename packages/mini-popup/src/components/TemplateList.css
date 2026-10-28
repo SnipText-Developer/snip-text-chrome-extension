@@ -11,9 +11,6 @@
   color: #525252;
 }
 
-#snip-text-mini-popup button[aria-selected="true"] {
-  background: #d9d9d9;
-}
 
 #snip-text-mini-popup button[role="option"] {
   box-sizing: border-box;
@@ -46,4 +43,16 @@
 #snip-text-mini-popup .message {
   padding: 0.75rem;
   color: #6b7280;
+}
+
+#snip-text-mini-popup button.reserved-command[role="option"] {
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  height: auto;
+  min-height: 36px;
+  padding: 8px 10px;
+}
+#snip-text-mini-popup .reserved-command .template-text {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
 }

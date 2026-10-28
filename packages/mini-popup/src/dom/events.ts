@@ -33,7 +33,6 @@ export function createEventDom(host: HTMLElement) {
       doc.addEventListener("pointerdown", handlers.pointerdown, { signal });
       return () => listeners.abort();
     },
-
   };
 }
 

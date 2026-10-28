@@ -1,4 +1,4 @@
-export interface EditorAnchor {
+interface EditorAnchor {
   editor: HTMLElement;
   trigger: Range;
   query: string;
@@ -9,7 +9,7 @@ function containsRange(editor: HTMLElement, range: Range): boolean {
   return editor.isConnected && editor.contains(range.startContainer) && editor.contains(range.endContainer);
 }
 
-export function findEditorAnchor(selector: string, isComposing: boolean, doc: Document = document): EditorAnchor | null {
+function findEditorAnchor(selector: string, isComposing: boolean, doc: Document): EditorAnchor | null {
   const selection = doc.getSelection();
   if (!selection?.rangeCount || (!isComposing && !selection.isCollapsed)) return null;
 
@@ -25,7 +25,9 @@ export function findEditorAnchor(selector: string, isComposing: boolean, doc: Do
   prefix.selectNodeContents(editor);
   prefix.setEnd(caret.endContainer, caret.endOffset);
   const text = prefix.toString();
-  const match = /(?:^|\s)(\/([^\s/]*))$/.exec(text);
+  const suffix = /(\/([^\s/]+))$/.exec(text);
+  const toneMatch = suffix && "톤교정".startsWith(suffix[2].normalize("NFC")) ? suffix : null;
+  const match = /(?:^|\s)(\/([^\s/]*))$/.exec(text) ?? toneMatch;
   if (!match) return null;
 
   // Map the text offset back to the original DOM, including nested formatting.
@@ -58,7 +60,10 @@ export function createEditorDom(selector: string, doc: Document) {
     matches(target: EventTarget | null): boolean {
       return target instanceof Element && target.closest(selector) !== null;
     },
-    isConnected(): boolean { return anchor?.editor.isConnected === true; },
+    hasSlash(target: EventTarget | null): boolean {
+      const editor = target instanceof Element ? target.closest(selector) : null;
+      return editor?.textContent?.includes("/") === true;
+    },
     findTrigger(composing = false) {
       const found = findEditorAnchor(selector, composing, doc);
       if (!found) return null;
