@@ -39,6 +39,7 @@ function insertTextAtRange(editor: HTMLElement, range: Range, text: string) {
   selectRange(range);
   editor.dispatchEvent(new InputEvent("input", {
     bubbles: true,
+    composed: true,
     inputType: "insertText",
     data: text,
   }));
@@ -89,11 +90,7 @@ export function useEditor(selector: string) {
       beforeInsert();
       const insertionText = preserveEditorSpaces(text);
       target.focus();
-      selectRange(range);
-      // Native editing preserves the host editor's input handling and undo history.
-      if (!document.execCommand("insertText", false, insertionText)) {
-        insertTextAtRange(target, range, insertionText);
-      }
+      insertTextAtRange(target, range, insertionText);
       return true;
     },
     [],

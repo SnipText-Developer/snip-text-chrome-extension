@@ -46,7 +46,6 @@ export function MiniPopup({ selector, getTemplates, host, shadow }: Props) {
             event.preventDefault();
           }}
           onKeyDown={(event) => event.stopPropagation()}
-          onKeyPress={(event) => event.stopPropagation()}
           onKeyUp={(event) => event.stopPropagation()}>
           <header>{selected ? `${selected.shortcut} 변수 입력` : "템플릿"}</header>
           {selected ? (

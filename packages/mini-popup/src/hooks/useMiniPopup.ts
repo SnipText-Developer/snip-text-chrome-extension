@@ -117,7 +117,7 @@ export function useMiniPopup(selector: string, getTemplates: StartPopupOptions["
 
       const snapshot = currentState.current;
       const isConfirmKey = event.key === "Enter" && !event.shiftKey;
-      const isCompositionKey = composing.current || event.isComposing || event.keyCode === 229;
+      const isCompositionKey = composing.current || event.isComposing;
 
       if (isCompositionKey) {
         if (!snapshot.selectedTemplate && isConfirmKey) {
@@ -138,7 +138,14 @@ export function useMiniPopup(selector: string, getTemplates: StartPopupOptions["
         }
         return;
       }
-      if (snapshot.selectedTemplate || !snapshot.templates.length) return;
+      if (snapshot.selectedTemplate) return;
+      if (!snapshot.templates.length) {
+        if (isConfirmKey && snapshot.message === "템플릿 불러오는 중…") {
+          consumeKey(event);
+          pendingEnter = true;
+        }
+        return;
+      }
 
       switch (event.key) {
         case "ArrowDown":

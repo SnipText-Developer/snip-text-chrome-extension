@@ -78,13 +78,13 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   };
   const editor = document.querySelector("#editor");
   const inserted = [];
-  let nativeInsertion = true;
-  document.execCommand = (_command, _showUI, text) => {
-    if (!nativeInsertion) return false;
-    inserted.push(text);
-    editor.textContent = text;
-    return true;
-  };
+  editor.addEventListener("input", (event) => {
+    if (event.inputType === "insertText") {
+      inserted.push(event.data);
+      assert.equal(event.bubbles, true);
+      assert.equal(event.composed, true);
+    }
+  });
   const { startPopup } = await import(moduleUrl("../packages/mini-popup/src/index.ts"));
   let stop;
   await act(async () => { stop = startPopup({ selector: "#editor", getTemplates }); });
@@ -158,9 +158,9 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
       window.getSelection().collapse(editor.firstChild, 3);
       editor.dispatchEvent(new window.InputEvent("input", { bubbles: true, isComposing: true }));
       await settle();
-      if (!afterComposition) key(editor, "Enter", { isComposing: true, keyCode: 229 });
+      if (!afterComposition) key(editor, "Enter", { isComposing: true });
       editor.dispatchEvent(new window.CompositionEvent("compositionend", { bubbles: true }));
-      if (afterComposition) key(editor, "Enter", { keyCode: 229 });
+      if (afterComposition) key(editor, "Enter");
       await settle();
     });
     assert.equal(shadow.activeElement, shadow.querySelector("input"));
@@ -232,12 +232,10 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   assert.equal(document.activeElement, editor);
   assert.equal(shadow.host.style.display, "none");
 
-  nativeInsertion = false;
   await open();
   await act(async () => { key(editor, "Enter"); });
   assert.equal(editor.textContent, "일반 본문");
   assert.equal(window.getSelection().isCollapsed, true);
-  nativeInsertion = true;
 
   failLoad = true;
   await open();
