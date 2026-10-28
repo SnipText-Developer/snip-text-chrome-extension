@@ -1,6 +1,5 @@
-import type { StartPopupOptions, Template } from "@snip-text/mini-popup";
-import type { EditorVendorName, EditorStatus } from "../../core/data-types";
-import { sendMessage } from "../../common/message-bus";
+import { sendMessage } from "./common/message-bus";
+import type { PopupConnection, StartPopupOptions, Template } from "./types";
 
 export async function getEditorText(): Promise<string> {
   const response = await sendMessage({
@@ -41,8 +40,7 @@ export async function getTemplates(): Promise<Template[]> {
 }
 
 export function createMiniPopupActions(
-  vendorName: EditorVendorName,
-  getEditorStatus: () => Partial<EditorStatus> | null,
+  { vendorName, getEditorStatus }: PopupConnection,
 ): Omit<StartPopupOptions, "selector"> {
   return {
     insertText: insertTemplate,

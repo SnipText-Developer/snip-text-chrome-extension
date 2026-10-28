@@ -1,6 +1,6 @@
 import { getVendorByUrl, isVendorName } from "../config/vendors";
 import { useEffect, useState } from "react";
-import { sendMessage } from "../common/sendMessage";
+import { sendMessage } from "../common/message-bus";
 import { tryCatch } from "../common/wrapper";
 import type { EditorStatus } from "../core/data-types";
 import type { EditorStatusState } from "../context/editorStatusContext";

@@ -16,3 +16,12 @@ export interface StartPopupOptions {
   correctTone?: (tone: string) => Promise<string>;
   getEditorText?: () => Promise<string>;
 }
+
+export interface PopupConnection {
+  vendorName: string;
+  getEditorStatus: () => { text?: string; isEditable?: boolean } | null;
+}
+
+export interface ConnectedPopupOptions extends PopupConnection {
+  selector: string;
+}

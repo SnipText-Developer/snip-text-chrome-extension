@@ -1,6 +1,6 @@
 # @snip-text/mini-popup
 
-contenteditable 에디터에서 `/` 단축어로 템플릿을 검색하고 변수 입력 후 삽입하는 React 팝업입니다. Chrome API에 의존하지 않습니다.
+contenteditable 에디터에서 `/` 단축어로 템플릿을 검색하고 변수 입력 후 삽입하는 React 팝업입니다. 확장 프로그램용 액션은 Chrome 메시지 API를 사용합니다.
 
 ```ts
 import { startPopup, type Template } from "@snip-text/mini-popup";
@@ -22,7 +22,7 @@ DOM 접근의 단일 진입점은 `dom/index.ts`의 `createMiniPopupDom(selector
 
 DOM 계층은 `editor.ts`(편집기·Range·커서 복원), `popup.ts`(항목 탐색·포커스·스크롤·표시), `position.ts`(측정·좌표·viewport 구독), `events.ts`(이벤트 등록·해제·기본 동작 제어), `host.ts`(컨테이너 생성·제거)로 나눴습니다. 외부 코드는 `dom/index.ts`만 가져오며 DOM selector나 좌표 계산을 직접 작성하지 않습니다. 유지보수 규칙은 `src/dom/README.md`에 있습니다.
 
-확장 프로그램에서는 `src/content/controller/mini-popup-actions.ts`가 background의 `/editor/insert-text`에 텍스트만 요청합니다. background는 요청을 보낸 탭·프레임으로 전달합니다. content 라우터의 기존 요청 규격을 유지하며, mini-popup과 sidebar 모두 본문 전체를 교체합니다. 공백·개행 인코딩은 content 삽입 함수가 `encodeEditorText`를 호출해 한 번만 적용합니다.
+확장 프로그램에서는 mini-popup의 `src/actions.ts`가 background의 `/editor/insert-text`에 텍스트만 요청합니다. background는 요청을 보낸 탭·프레임으로 전달합니다. content 라우터의 기존 요청 규격을 유지하며, mini-popup과 sidebar 모두 본문 전체를 교체합니다. 공백·개행 인코딩은 content 삽입 함수가 `encodeEditorText`를 호출해 한 번만 적용합니다.
 
 변수 치환 결과는 `useTemplateContent(content, values)` 훅에서 입력 상태 변경에 따라 계산합니다.
 
@@ -44,3 +44,5 @@ DOM 계층은 `editor.ts`(편집기·Range·커서 복원), `popup.ts`(항목 �
 `getEditorText?: () => Promise<string>`로 현재 본문 조회를 주입합니다. 확장 프로그램에서는 BACKGROUND의 `GET /editor/text`를 호출합니다. 톤 교정 요청 전후에 이 API로 본문을 비교하며, mini-popup의 DOM 계층에서 본문 전체를 직접 읽지 않습니다.
 
 `GET /editor/text`는 BACKGROUND에 저장된 observer 상태를 직접 응답합니다. CONTENT 왕복 조회는 하지 않으며, 변경 비교는 observer가 갱신한 본문을 기준으로 합니다.
+
+확장 프로그램에서는 `startPopup({ selector, vendorName, getEditorStatus })`로 시작합니다. `startPopup`이 패키지 내부에서 템플릿 조회·삽입·본문 조회·톤 교정 액션을 구성합니다. content는 vendorName과 observer의 현재 상태 조회만 전달합니다. 메시지 전송은 `src/common/`에 복사한 message-bus·wrapper·메시지 타입을 사용하며, 기존 액션 콜백 주입 방식도 지원합니다.

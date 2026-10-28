@@ -52,9 +52,10 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   const { startPopup } = await import(moduleUrl("../packages/mini-popup/src/index.ts"));
   const { router: backgroundRouter } = await import(moduleUrl("../src/background/editor/router/router.ts"));
   const { createEditorRouter } = await import(moduleUrl("../src/content/editor-router.ts"));
-  const { insertTemplate } = await import(moduleUrl("../src/content/controller/mini-popup-actions.ts"));
+  const actions = await import(moduleUrl("../packages/mini-popup/src/actions.ts"));
+  const insertTemplate = (text) => actions.insertTemplate(text);
   const { insertTextToEditor } = await import(moduleUrl("../src/content/controller/insert-text.ts"));
-  const { getEditorText } = await import(moduleUrl("../src/content/controller/mini-popup-actions.ts"));
+  const getEditorText = () => actions.getEditorText();
   const contentRouter = createEditorRouter({
     vendorName: "GOOGLE", getEditor: () => editor,
     getEditorStatus: () => ({ text: editor.textContent }),
@@ -625,4 +626,26 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   assert.equal(requests, requestCount);
   assert.equal(host.isConnected, false);
 
+});
+
+test("popup actions synchronize current editor before tone correction", async (t) => {
+  const { createMiniPopupActions } = await import(moduleUrl("../packages/mini-popup/src/actions.ts"));
+  const requests = [];
+  let text = "작성한 본문 /톤교정";
+  const previousChrome = globalThis.chrome;
+  t.after(() => { globalThis.chrome = previousChrome; });
+  globalThis.chrome = { runtime: { sendMessage: async (request) => {
+      requests.push(request);
+      return { statusCode: 200, data: { text: "교정한 본문" } };
+    } } };
+  const actions = createMiniPopupActions({
+    vendorName: "GOOGLE",
+    getEditorStatus: () => ({ text, isEditable: true }),
+  });
+  assert.equal(await actions.correctTone("정중하게"), "교정한 본문");
+  assert.deepEqual(requests.map(({ path }) => path), ["/editor/update-status", "/ai/tone-correction"]);
+  assert.deepEqual(requests[0].data, { vendorName: "GOOGLE", status: { text, isEditable: true } });
+  text = "/톤교정";
+  await assert.rejects(actions.correctTone("정중하게"), /교정할 본문/);
+  assert.equal(requests.length, 2);
 });

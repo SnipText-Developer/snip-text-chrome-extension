@@ -2,7 +2,7 @@ import { getTemplateVariables } from "../common/template-content";
 import TemplateInsertPage from "./TemplateInsertPage";
 import InsertBodyButton from "./InsertBodyButton";
 import { useContext, useEffect, useState } from "react";
-import { sendMessage } from "../common/sendMessage";
+import { sendMessage } from "../common/message-bus";
 import { pageConfig } from "../config";
 import TemplateEmptyState from "./TemplateEmptyState";
 import { EditorStatusContext } from "../context/editorStatusContext";

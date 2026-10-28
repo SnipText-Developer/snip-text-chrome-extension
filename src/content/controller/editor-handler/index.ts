@@ -1,5 +1,4 @@
 import { startPopup } from "@snip-text/mini-popup";
-import { createMiniPopupActions } from "../mini-popup-actions";
 import { EditorMutationObserver } from "./observer/editor-mutation-observer";
 import { EditorPollingObserver } from "./observer/editor-polling-observer";
 import { EditorCombinedObserver } from "./observer/editor-combined-observer";
@@ -65,7 +64,8 @@ function startEditorObserver({
   observer.start();
   startPopup({
     selector,
-    ...createMiniPopupActions(vendorName, () => observer.getEditorStatus()),
+    vendorName,
+    getEditorStatus: () => observer.getEditorStatus(),
   });
 
   return observer;

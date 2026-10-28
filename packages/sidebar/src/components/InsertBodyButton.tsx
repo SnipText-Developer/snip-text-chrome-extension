@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { sendMessage } from "../common/sendMessage";
+import { sendMessage } from "../common/message-bus";
 import "./InsertBodyButton.css";
 
 interface Props {

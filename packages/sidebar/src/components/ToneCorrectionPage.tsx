@@ -1,6 +1,6 @@
 import { useContext, useEffect, useRef, useState, type FormEvent } from "react";
 import { EditorStatusContext } from "../context/editorStatusContext";
-import { sendMessage } from "../common/sendMessage";
+import { sendMessage } from "../common/message-bus";
 import InsertBodyButton from "./InsertBodyButton";
 import "./ToneCorrectionPage.css";
 
