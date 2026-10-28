@@ -159,3 +159,6 @@ mini-popup의 삽입은 주입된 콜백을 통해 background의 `/editor/insert
 sidebar는 `packages/sidebar/src/config/vendors.ts`에서 로그인 표시, 메일 도메인, 벤더 타입·검증을 독립적으로 관리합니다. 다른 프로젝트의 소스를 import하지 않습니다. 벤더를 추가할 때는 확장 프로그램 정의, 콘텐츠 스크립트 진입 파일, manifest 등록과 빌드 진입점을 추가하고, sidebar에서 지원할 벤더도 패키지 내부 설정에 등록합니다. 메시지의 벤더 ID는 양쪽에서 동일하게 사용해야 합니다.
 
 `node --test tests/vendors.test.mjs`로 벤더 판별, 유사 도메인 차단, 작성 경로, 빌드 등록을 검증합니다.
+
+
+CONTENT 요청은 등록된 HTTPS 메일 URL에서 허용합니다. 예외는 Chrome의 `sender.origin`이 같은 허용 도메인인 `about:blank`·`about:srcdoc` 하위 프레임(`frameId > 0`)뿐입니다. `blob:`·`data:`·`filesystem:`은 허용하지 않습니다. `node --test tests/message-sender.test.mjs`로 송신자 검증과 템플릿 조회 권한을 확인합니다.

@@ -55,10 +55,10 @@ interface AuthToken {
 
 BACKGROUND는 `req.src`뿐 아니라 실제 `chrome.runtime.MessageSender`를 검사합니다.
 
-| 호출자 | 허용 조건 |
-| --- | --- |
-| PAGE | `src: "PAGE"`, 같은 확장 프로그램 ID, `sender.tab` 없음, `sender.url === chrome.runtime.getURL("src/page/index.html")` |
-| CONTENT | `src: "CONTENT"`, 같은 확장 프로그램 ID, 탭 ID 존재, HTTPS의 `mail.google.com` 또는 `mail.naver.com`에서 보낸 메시지 |
+| 호출자  | 허용 조건                                                                                                                                                                                                                                               |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PAGE    | `src: "PAGE"`, 같은 확장 프로그램 ID, `sender.tab` 없음, `sender.url === chrome.runtime.getURL("src/page/index.html")`                                                                                                                                  |
+| CONTENT | `src: "CONTENT"`, 같은 확장 프로그램 ID, 탭 ID 존재, HTTPS의 `mail.google.com` 또는 `mail.naver.com`에서 보낸 메시지. `about:blank`·`about:srcdoc`은 `frameId > 0`인 하위 프레임이며 Chrome의 `sender.origin`이 등록된 HTTPS 메일 도메인인 경우만 허용합니다. `blob:`·`data:`·`filesystem:`은 거부 |
 
 BACKGROUND 수신 메시지는 `dst: "BACKGROUND"`여야 합니다. 권한이 없는 요청이나 각 라우터가 지원하지 않는 메서드·경로 조합은 응답 없이 무시합니다. 일괄적으로 `401`이나 `403`을 반환하지 않습니다.
 
@@ -71,11 +71,11 @@ BACKGROUND 수신 메시지는 `dst: "BACKGROUND"`여야 합니다. 권한이 �
 }
 ```
 
-| 코드 | 의미 |
-| --- | --- |
-| 400 | 요청 필드 또는 서비스 검증 실패. `msg`는 검증 항목에 따라 달라집니다. |
-| 404 | 토큰·템플릿·삽입 대상 편집기 없음. 아래 API별 응답을 따릅니다. |
-| 500 | 처리 중 예외. auth·template·editor별 오류 메시지 또는 공통 메시지 처리 오류를 반환합니다. |
+| 코드 | 의미                                                                                      |
+| ---- | ----------------------------------------------------------------------------------------- |
+| 400  | 요청 필드 또는 서비스 검증 실패. `msg`는 검증 항목에 따라 달라집니다.                     |
+| 404  | 토큰·템플릿·삽입 대상 편집기 없음. 아래 API별 응답을 따릅니다.                            |
+| 500  | 처리 중 예외. auth·template·editor별 오류 메시지 또는 공통 메시지 처리 오류를 반환합니다. |
 
 BACKGROUND 최상위 라우터에서 `/auth/`, `/template/`, `/editor/` 중 어느 접두사에도 해당하지 않는 경로는 `404`, `{ "msg": "router not founded" }`를 반환합니다. 해당 접두사 안의 미지원 경로는 각 라우터에서 무시합니다. 공통 메시지 리스너가 예외를 처리하면 `500`, `{ "msg": "메시지 처리에 실패했습니다." }`를 반환합니다.
 
@@ -83,12 +83,12 @@ BACKGROUND 최상위 라우터에서 `/auth/`, `/template/`, `/editor/` 중 어�
 
 경로는 모두 `/auth/token`이며 PAGE만 호출할 수 있습니다. `dst`는 `BACKGROUND`입니다.
 
-| 메서드 | 요청 `data` | 성공 응답 `data` | 추가 오류 |
-| --- | --- | --- | --- |
-| POST | `{ vendor, token, expiresAt? }` | `AuthToken` | 기존 유효 토큰이 있으면 400 |
-| GET | `{ vendor }` | `AuthToken` | 없거나 만료되었으면 404 |
-| PUT | `{ vendor, token, expiresAt? }` | `AuthToken` | 갱신할 유효 토큰이 없으면 404 |
-| DELETE | `{ vendor }` | `{ deleted: boolean }` | 없으면 `deleted: false`로 200 |
+| 메서드 | 요청 `data`                     | 성공 응답 `data`       | 추가 오류                     |
+| ------ | ------------------------------- | ---------------------- | ----------------------------- |
+| POST   | `{ vendor, token, expiresAt? }` | `AuthToken`            | 기존 유효 토큰이 있으면 400   |
+| GET    | `{ vendor }`                    | `AuthToken`            | 없거나 만료되었으면 404       |
+| PUT    | `{ vendor, token, expiresAt? }` | `AuthToken`            | 갱신할 유효 토큰이 없으면 404 |
+| DELETE | `{ vendor }`                    | `{ deleted: boolean }` | 없으면 `deleted: false`로 200 |
 
 성공 코드는 모두 `200`입니다. `token`은 공백만 있는 문자열을 허용하지 않으며, 저장할 때 원래 문자열을 유지합니다. `expiresAt`은 선택적인 Unix epoch 밀리초 숫자로 현재보다 미래여야 합니다. 유효기간은 기본 5분이며 더 먼 만료 시각을 요청해도 현재부터 최대 5분으로 제한합니다. 응답에는 `expiresAt`을 포함하지 않습니다.
 
@@ -220,10 +220,10 @@ GET·PUT에서 토큰을 찾지 못하면 `404`, `{ "msg": "인증 토큰이 없
 }
 ```
 
-| 요청 출처 | CONTENT 전달 대상 |
-| --- | --- |
-| PAGE | 현재 창의 활성 탭. 프레임을 별도로 지정하지 않습니다. |
-| CONTENT | 발신자의 `sender.tab.id`와 `sender.frameId`. 프레임 ID가 없으면 0을 사용합니다. |
+| 요청 출처 | CONTENT 전달 대상                                                               |
+| --------- | ------------------------------------------------------------------------------- |
+| PAGE      | 현재 창의 활성 탭. 프레임을 별도로 지정하지 않습니다.                           |
+| CONTENT   | 발신자의 `sender.tab.id`와 `sender.frameId`. 프레임 ID가 없으면 0을 사용합니다. |
 
 `vendorName`, `insertionId`, `mode`, DOM 요소, Range를 요청 데이터에 넣을 필요가 없습니다. 삽입 결과의 vendor는 CONTENT 응답에서 가져옵니다. 실제 동작은 **본문 전체 교체**이며 단축어 부분만 치환하는 API가 아닙니다. 성공 시 이전 본문이 비어 있지 않으면 이력에 추가하고, 상태를 갱신한 뒤 PAGE에 알립니다. 삽입 이력 추가 시 최근 2개까지 유지합니다.
 
@@ -261,10 +261,10 @@ interface EditorInsertResult {
 
 `prevText`는 교체 전 편집기의 `textContent`입니다. 기존 내용이 `","`이면 빈 문자열로 취급합니다. `text`는 observer의 `getEditorStatus()`에서 읽은 삽입 후 본문이며 결과가 없으면 `""`입니다. observer는 `textContent`를 사용하므로 `<br>`가 응답 문자열의 `\n`으로 복원되지는 않습니다.
 
-| 실패 조건 | 응답 |
-| --- | --- |
-| 비문자열·빈 문자열 또는 정규화 후 빈 문자열 | `400`, `{ msg: "Invalid data field" }` |
-| 삽입 함수가 편집기를 찾지 못함 | `404`, `{ msg: "GOOGLE editor not found." }` 또는 NAVER 메시지 |
+| 실패 조건                                   | 응답                                                           |
+| ------------------------------------------- | -------------------------------------------------------------- |
+| 비문자열·빈 문자열 또는 정규화 후 빈 문자열 | `400`, `{ msg: "Invalid data field" }`                         |
+| 삽입 함수가 편집기를 찾지 못함              | `404`, `{ msg: "GOOGLE editor not found." }` 또는 NAVER 메시지 |
 
 ### 문자열 변환
 
