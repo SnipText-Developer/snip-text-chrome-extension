@@ -1,6 +1,6 @@
-import { vendors } from "../config/vendors";
 import { getTemplateVariables } from "../common/template-content";
 import TemplateInsertPage from "./TemplateInsertPage";
+import InsertBodyButton from "./InsertBodyButton";
 import { useContext, useEffect, useState } from "react";
 import { sendMessage } from "../common/sendMessage";
 import { pageConfig } from "../config";
@@ -85,39 +85,6 @@ function TemplateListPage({ onOpenToneCorrection }: { onOpenToneCorrection: () =
     }
   }
 
-  async function insert(item: Template, content = item.content) {
-    if (inserting || !isEditorEditable) return;
-    setInserting(true);
-    setNotice("");
-    try {
-      const response = await sendMessage({
-        src: "PAGE",
-        dst: "BACKGROUND",
-        path: "/editor/insert-text",
-        method: "PUT",
-        data: { text: content },
-      });
-      if (response?.statusCode === 200) {
-        setSelectedTemplate(null);
-      } else {
-        setNotice(`${vendors.map((vendor) => vendor.mailName).join(" 또는 ")}의 작성 창을 열고 다시 시도해주세요.`);
-      }
-    } catch {
-      setNotice(
-        "삽입하지 못했습니다. 메일 작성 창을 확인하고 다시 시도해주세요.",
-      );
-    } finally {
-      setInserting(false);
-    }
-  }
-
-  function requestInsert(item: Template) {
-    if (inserting || !isEditorEditable) return;
-    setNotice("");
-    if (getTemplateVariables(item.content).length) setSelectedTemplate(item);
-    else void insert(item);
-  }
-
   const visibleTemplates = templates.filter((item) =>
     `${item.title} ${item.content} ${item.shortcut ?? ""}`
       .toLowerCase()
@@ -136,7 +103,9 @@ function TemplateListPage({ onOpenToneCorrection }: { onOpenToneCorrection: () =
           setSelectedTemplate(null);
           setNotice("");
         }}
-        onInsert={(content) => void insert(selectedTemplate, content)}
+        onPendingChange={setInserting}
+        onSuccess={() => setSelectedTemplate(null)}
+        onError={setNotice}
       />
     );
   }
@@ -204,16 +173,14 @@ function TemplateListPage({ onOpenToneCorrection }: { onOpenToneCorrection: () =
                 <p className="template-preview">{item.content}</p>
                 <div className="card-actions">
                   <button onClick={() => void copy(item)}>복사</button>
-                  <button
-                    disabled={!isEditorEditable}
-                    title={
-                      isEditorEditable
-                        ? "메일 본문에 삽입"
-                        : "메일 작성 창을 열어주세요."
-                    }
-                    onClick={() => requestInsert(item)}>
-                    메일 본문에 삽입
-                  </button>
+                  {getTemplateVariables(item.content).length ? (
+                    <button disabled={inserting || !isEditorEditable} onClick={() => { setNotice(""); setSelectedTemplate(item); }}>메일 본문에 삽입</button>
+                  ) : (
+                    <InsertBodyButton text={item.content} label="메일 본문에 삽입" disabled={!isEditorEditable} beforeInsert={() => !inserting}
+                      title={isEditorEditable ? "메일 본문에 삽입" : "메일 작성 창을 열어주세요."}
+                      onPendingChange={(value) => { setInserting(value); if (value) setNotice(""); }}
+                      onSuccess={() => setNotice("본문에 삽입했습니다.")} onError={setNotice} />
+                  )}
                 </div>
               </article>
             ))

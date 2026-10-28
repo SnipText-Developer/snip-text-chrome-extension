@@ -10,6 +10,7 @@ export function moduleUrl(path, replacements = {}) {
   if (url.pathname.endsWith(".json")) source = "export default " + source;
   else if (url.pathname.endsWith(".css")) source = "export default " + JSON.stringify(source);
   else {
+    source = source.replace(/import\s+["'][^"']+\.css["'];?/g, "");
     for (const [from, to] of Object.entries(replacements)) source = source.replaceAll(from, to);
     source = ts.transpileModule(source, {
       compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2023, jsx: ts.JsxEmit.ReactJSX },

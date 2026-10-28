@@ -1,3 +1,4 @@
+import InsertBodyButton from "./InsertBodyButton";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getTemplateVariables, getTemplateContent } from "../common/template-content";
 import type { Template } from "../core/data-types";
@@ -9,10 +10,12 @@ interface Props {
   editable: boolean;
   notice: string;
   onClose: () => void;
-  onInsert: (content: string) => void;
+  onPendingChange: (pending: boolean) => void;
+  onSuccess: () => void;
+  onError: (message: string) => void;
 }
 
-export default function TemplateInsertPage({ template, busy, editable, notice, onClose, onInsert }: Props) {
+export default function TemplateInsertPage({ template, busy, editable, notice, onClose, onPendingChange, onSuccess, onError }: Props) {
   const variables = useMemo(() => getTemplateVariables(template.content), [template.content]);
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(variables.map((name) => [name, ""])),
@@ -55,7 +58,6 @@ export default function TemplateInsertPage({ template, busy, editable, notice, o
         onCompositionEnd={() => { composing.current = false; }}
         onSubmit={(event) => {
           event.preventDefault();
-          if (!busy && editable && !composing.current) onInsert(content);
         }}>
         <div className="template-insert-fields">
           {variables.map((variable, index) => (
@@ -76,9 +78,7 @@ export default function TemplateInsertPage({ template, busy, editable, notice, o
         </div>
         <p className="notice" role="status" aria-live="polite">{notice}</p>
         <div className="template-insert-footer">
-          <button type="submit" disabled={busy || !editable} title={editable ? "메일 본문에 삽입" : "메일 작성 창을 열어주세요."}>
-            {busy ? "삽입 중…" : "메일 본문에 삽입"}
-          </button>
+          <InsertBodyButton text={content} type="submit" label="메일 본문에 삽입" beforeInsert={() => !busy && !composing.current} onPendingChange={onPendingChange} onSuccess={onSuccess} onError={onError} disabled={!editable} title={editable ? "메일 본문에 삽입" : "메일 작성 창을 열어주세요."} />
         </div>
       </form>
     </section>

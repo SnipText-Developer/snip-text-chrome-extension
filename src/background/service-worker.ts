@@ -3,6 +3,7 @@ import type { MessageRequest, MessageResponse } from "../core/message-types";
 import { router as authRouter } from "./auth/router";
 import { router as editorRouter } from "./editor/router/router";
 import { router as templateRouter } from "./template/router";
+import { router as aiRouter } from "./ai/router";
 
 listenMessage(
   async (
@@ -21,6 +22,10 @@ listenMessage(
 
     if (req.path.startsWith("/editor/")) {
       return await editorRouter(req, sender);
+    }
+
+    if (req.path.startsWith("/ai/")) {
+      return await aiRouter(req, sender);
     }
 
     return {

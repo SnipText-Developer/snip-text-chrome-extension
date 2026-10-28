@@ -77,7 +77,7 @@ BACKGROUND 수신 메시지는 `dst: "BACKGROUND"`여야 합니다. 권한이 �
 | 404  | 토큰·템플릿·삽입 대상 편집기 없음. 아래 API별 응답을 따릅니다.                            |
 | 500  | 처리 중 예외. auth·template·editor별 오류 메시지 또는 공통 메시지 처리 오류를 반환합니다. |
 
-BACKGROUND 최상위 라우터에서 `/auth/`, `/template/`, `/editor/` 중 어느 접두사에도 해당하지 않는 경로는 `404`, `{ "msg": "router not founded" }`를 반환합니다. 해당 접두사 안의 미지원 경로는 각 라우터에서 무시합니다. 공통 메시지 리스너가 예외를 처리하면 `500`, `{ "msg": "메시지 처리에 실패했습니다." }`를 반환합니다.
+BACKGROUND 최상위 라우터에서 `/auth/`, `/template/`, `/editor/`, `/ai/` 중 어느 접두사에도 해당하지 않는 경로는 `404`, `{ "msg": "router not founded" }`를 반환합니다. 해당 접두사 안의 미지원 경로는 각 라우터에서 무시합니다. 공통 메시지 리스너가 예외를 처리하면 `500`, `{ "msg": "메시지 처리에 실패했습니다." }`를 반환합니다.
 
 ## BACKGROUND: 인증 토큰
 
@@ -300,3 +300,18 @@ CR 단독, 탭, 기존 NBSP는 그대로 유지합니다. Range 삽입 중 예�
 ```
 
 정상 수신 시 `200`, `{ "received": true }`를 반환합니다. 상태 객체가 잘못되면 `400`, `{ "msg": "잘못된 에디터 상태입니다." }`를 반환합니다. 알림의 출처·목적지·메서드·경로가 다르면 무시합니다. sidebar는 최초 `/editor/status` 조회와 실시간 알림을 함께 사용하며, 실시간 알림이 먼저 도착하면 늦게 도착한 최초 조회 결과를 적용하지 않습니다.
+
+## BACKGROUND: AI (임시)
+
+### POST `/ai/tone-correction`
+
+- 호출자: 기존 발신자 검증을 통과한 CONTENT 또는 PAGE
+- 목적지: BACKGROUND
+- CONTENT 요청 `data`: `{ tone: string }` (메일 서비스는 발신자에서 결정)
+- PAGE 요청 `data`: `{ vendorName: VendorName, tone: string }`
+- 성공 응답: `200`, `{ text: "(톤교정)" + 에디터본문 }`
+- 문체 누락·공백 또는 잘못된 vendor: `400`
+- 빈 본문: `400`, `{ msg: "교정할 본문을 작성해주세요." }`
+- 에디터 상태 없음: `404`
+
+본문은 observer가 BACKGROUND에 전달해 저장한 에디터 상태에서 읽습니다. 요청의 `text`는 사용하지 않습니다. 현재 실제 교정 대신 본문 앞에 `(톤교정)`을 붙여 반환하며, 에디터 본문을 변경하지 않습니다. 실제 교정 API 연결 지점은 `src/background/ai/router.ts`의 TODO입니다.
