@@ -150,3 +150,12 @@ mini-popup의 삽입은 주입된 콜백을 통해 background의 `/editor/insert
 사이드바 검색창 아래에는 ‘AI 톤교정’, ‘새 템플릿’ 버튼을 표시합니다. 이동 주소는 `packages/sidebar/src/config.ts`의 `toneCorrectionUrl`, `newTemplateUrl`에 지정하며, 설정하지 않은 버튼은 비활성화합니다.
 
 사이드바에서 `{{변수}}`가 있는 템플릿의 삽입 버튼을 누르면 변수 입력 화면을 표시합니다. 본문의 변수명을 중복 없이 추출하고 미리보기를 실시간 갱신합니다. ‘메일 본문에 삽입’으로 치환된 본문을 삽입하며 빈 입력값은 빈 문자열로 처리합니다. 닫기·Esc는 삽입 없이 목록으로 돌아가며, 실패 시 입력값을 유지합니다. 에디터가 입력 불가 상태이면 삽입 버튼도 비활성화됩니다.
+
+
+### 벤더 설정 관리
+
+확장 프로그램은 `src/config/vendors.json`에서 벤더 ID, 이름, 메일 도메인, 작성 경로, 에디터 선택자, 콘텐츠 스크립트 이름을 관리합니다. `src/config/vendors.ts`가 벤더 타입·검증·URL 판별 함수를 제공하며, background와 content에서 사용합니다. 콘텐츠 스크립트 도메인과 프레임 옵션은 `public/manifest.json`에서, 빌드 진입점은 `webpack.config.cjs`와 `vite.config.ts`에서 명시적으로 관리합니다. manifest는 별도 생성 과정 없이 빌드 결과에 복사합니다.
+
+sidebar는 `packages/sidebar/src/config/vendors.ts`에서 로그인 표시, 메일 도메인, 벤더 타입·검증을 독립적으로 관리합니다. 다른 프로젝트의 소스를 import하지 않습니다. 벤더를 추가할 때는 확장 프로그램 정의, 콘텐츠 스크립트 진입 파일, manifest 등록과 빌드 진입점을 추가하고, sidebar에서 지원할 벤더도 패키지 내부 설정에 등록합니다. 메시지의 벤더 ID는 양쪽에서 동일하게 사용해야 합니다.
+
+`node --test tests/vendors.test.mjs`로 벤더 판별, 유사 도메인 차단, 작성 경로, 빌드 등록을 검증합니다.

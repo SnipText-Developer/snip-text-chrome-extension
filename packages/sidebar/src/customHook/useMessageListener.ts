@@ -1,33 +1,19 @@
+import { getVendorByUrl, isVendorName } from "../config/vendors";
 import { useEffect, useState } from "react";
 import { sendMessage } from "../common/sendMessage";
 import { tryCatch } from "../common/wrapper";
-import type { EditorStatus, EditorVendorName } from "../core/data-types";
+import type { EditorStatus } from "../core/data-types";
 import type { EditorStatusState } from "../context/editorStatusContext";
 import type { MessageRequest, MessageResponse } from "../core/message-types";
 
 const EDITOR_STATUS_PATH = "/editor/status";
 const EDITOR_NOTIFY_STATUS_PATH = "/editor/notify-status";
 
-function getEditorVendor(tabUrl: string | undefined): EditorVendorName | null {
-  if (!tabUrl) return null;
-  const url = new URL(tabUrl);
-  if (url.protocol !== "https:") return null;
-
-  switch (url.hostname) {
-    case "mail.google.com":
-      return "GOOGLE";
-    case "mail.naver.com":
-      return "NAVER";
-    default:
-      return null;
-  }
-}
-
 export function isEditorStatus(value: unknown): value is EditorStatus {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const status = value as Partial<EditorStatus>;
   return (
-    (status.vendorName === "GOOGLE" || status.vendorName === "NAVER") &&
+    isVendorName(status.vendorName) &&
     typeof status.isEditable === "boolean" &&
     typeof status.text === "string" &&
     Array.isArray(status.prevTexts) &&
@@ -46,7 +32,7 @@ function isEditorNotification(req: MessageRequest): boolean {
 
 async function fetchInitialStatus(): Promise<EditorStatus | null> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const vendorName = getEditorVendor(tab?.url);
+  const vendorName = getVendorByUrl(tab?.url)?.id;
   if (!vendorName) return null;
 
   const response = await sendMessage({

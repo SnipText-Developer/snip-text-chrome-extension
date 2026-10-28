@@ -1,3 +1,5 @@
+import type { VendorName } from "../config/vendors";
+
 export interface EditorStatus {
   isEditable: boolean;
   text: string;
@@ -5,7 +7,7 @@ export interface EditorStatus {
   vendorName: EditorVendorName;
 }
 
-export type EditorVendorName = "GOOGLE" | "NAVER";
+export type EditorVendorName = VendorName;
 
 export interface Template {
   templateId: number;

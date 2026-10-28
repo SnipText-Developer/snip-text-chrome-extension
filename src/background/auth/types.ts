@@ -1,4 +1,6 @@
-export type AuthVendor = "GOOGLE" | "NAVER";
+import type { VendorName } from "../../config/vendors";
+
+export type AuthVendor = VendorName;
 
 export interface AuthToken {
   vendor: AuthVendor;

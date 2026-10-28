@@ -1,36 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, existsSync } from "node:fs";
-import ts from "typescript";
 import { JSDOM } from "jsdom";
 import { act, createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-const modules = new Map();
-function moduleUrl(path) {
-  const url = path instanceof URL ? path : new URL(path, import.meta.url);
-  if (modules.has(url.href)) return modules.get(url.href);
-  let source;
-  if (url.pathname.endsWith(".css")) {
-    source = "export default " + JSON.stringify(readFileSync(url, "utf8"));
-  } else {
-    source = ts.transpileModule(readFileSync(url, "utf8"), {
-      compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2023, jsx: ts.JsxEmit.ReactJSX },
-    }).outputText;
-    source = source.replace(/from ["']([^"']+)["']/g, (_, specifier) => {
-      let target;
-      if (specifier.startsWith(".")) {
-        const relative = new URL(specifier.replace("?inline", ""), url);
-        const resolved = [relative, new URL(relative.href + ".ts"), new URL(relative.href + ".tsx")].find((file) => existsSync(file));
-        target = moduleUrl(resolved);
-      } else target = import.meta.resolve(specifier);
-      return "from " + JSON.stringify(target);
-    });
-  }
-  const result = "data:text/javascript;base64," + Buffer.from(source).toString("base64");
-  modules.set(url.href, result);
-  return result;
-}
+import { moduleUrl } from "./module-url.mjs";
+
 const { getTemplateVariables } = await import(moduleUrl("../packages/mini-popup/src/utils/text.ts"));
 
 const { encodeEditorText } = await import(moduleUrl("../src/content/utils/editor-text.ts"));

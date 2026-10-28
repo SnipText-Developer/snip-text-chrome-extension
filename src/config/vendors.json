@@ -1,0 +1,20 @@
+{
+  "GOOGLE": {
+    "name": "Google",
+    "mailName": "Gmail",
+    "mark": "G",
+    "hostname": "mail.google.com",
+    "editorSelector": "div[contenteditable=\"true\"][g_editable=\"true\"][role=\"textbox\"][aria-multiline=\"true\"]",
+    "composePath": null,
+    "script": "gmail"
+  },
+  "NAVER": {
+    "name": "Naver",
+    "mailName": "네이버 메일",
+    "mark": "N",
+    "hostname": "mail.naver.com",
+    "editorSelector": "div.workseditor-content[class=\"workseditor-content\"][contenteditable=\"true\"]",
+    "composePath": "/v2/new",
+    "script": "naver"
+  }
+}

@@ -1,3 +1,4 @@
+import { isVendorName } from "../../config/vendors";
 import { repository } from "./repository";
 import type { AuthToken, AuthVendor } from "./types";
 
@@ -6,7 +7,7 @@ export class AuthError extends Error {}
 const MAX_AGE_MS = 5 * 60 * 1000;
 
 function parseVendor(value: unknown): AuthVendor {
-  if (value !== "GOOGLE" && value !== "NAVER") {
+  if (!isVendorName(value)) {
     throw new AuthError("지원하지 않는 인증 vendor입니다.");
   }
   return value;

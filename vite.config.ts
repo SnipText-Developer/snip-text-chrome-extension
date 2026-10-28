@@ -3,6 +3,7 @@ import { resolve } from "path";
 
 export default defineConfig({
   base: "./",
+  resolve: { alias: { "/src": resolve(process.cwd(), "packages/sidebar/src") } },
   build: {
     rollupOptions: {
       input: {

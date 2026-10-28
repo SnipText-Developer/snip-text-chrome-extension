@@ -1,3 +1,4 @@
+import { vendors } from "../config/vendors";
 import { getTemplateVariables } from "../common/template-content";
 import TemplateInsertPage from "./TemplateInsertPage";
 import { useContext, useEffect, useState } from "react";
@@ -99,7 +100,7 @@ function TemplateListPage() {
       if (response?.statusCode === 200) {
         setSelectedTemplate(null);
       } else {
-        setNotice("Gmail 또는 네이버 메일의 작성 창을 열고 다시 시도해주세요.");
+        setNotice(`${vendors.map((vendor) => vendor.mailName).join(" 또는 ")}의 작성 창을 열고 다시 시도해주세요.`);
       }
     } catch {
       setNotice(

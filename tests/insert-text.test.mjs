@@ -1,20 +1,8 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import ts from "typescript";
 import { JSDOM } from "jsdom";
 
-function moduleUrl(path) {
-  const url = path instanceof URL ? path : new URL(path, import.meta.url);
-  const source = readFileSync(url, "utf8");
-  const { outputText } = ts.transpileModule(source, {
-    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2023 },
-  });
-  const resolved = outputText.replace(/from ["']([^"']+)["']/g, (_, specifier) =>
-    "from " + JSON.stringify(moduleUrl(new URL(specifier + ".ts", url))),
-  );
-  return "data:text/javascript;base64," + Buffer.from(resolved).toString("base64");
-}
+import { moduleUrl } from "./module-url.mjs";
 
 const { insertTextToEditor } = await import(moduleUrl("../src/content/controller/insert-text.ts"));
 const { encodeEditorText, normalizeEditorText } = await import(moduleUrl("../src/content/utils/editor-text.ts"));

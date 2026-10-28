@@ -1,15 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import ts from "typescript";
 
-function moduleUrl(path, replacements = {}) {
-  let source = readFileSync(new URL(path, import.meta.url), "utf8");
-  for (const [from, to] of Object.entries(replacements)) source = source.replace(from, to);
-  return "data:text/javascript;base64," + Buffer.from(
-    ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2023 } }).outputText,
-  ).toString("base64");
-}
+import { moduleUrl } from "./module-url.mjs";
+
 const repositoryUrl = moduleUrl("../src/background/editor/repository.ts");
 const { service, EditorValidationError } = await import(moduleUrl(
   "../src/background/editor/service.ts", { '"./repository"': JSON.stringify(repositoryUrl) },

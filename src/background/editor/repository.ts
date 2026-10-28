@@ -1,22 +1,14 @@
+import { vendors } from "../../config/vendors";
 import type { EditorStatus } from "../../core/data-types";
 import type { EditorVendorName } from "../../core/data-types";
 
 const LIST_MAX_LEN = 2;
 
-const storage: Partial<Record<`snip.${EditorVendorName}`, EditorStatus>> = {
-  "snip.NAVER": {
-    isEditable: false,
-    text: "",
-    prevTexts: [],
-    vendorName: "NAVER",
-  },
-  "snip.GOOGLE": {
-    isEditable: false,
-    text: "",
-    prevTexts: [],
-    vendorName: "GOOGLE",
-  },
-};
+const storage: Partial<Record<`snip.${EditorVendorName}`, EditorStatus>> = Object.fromEntries(
+  vendors.map(({ id }) => [`snip.${id}`, {
+    isEditable: false, text: "", prevTexts: [], vendorName: id,
+  }]),
+);
 
 const getKey = (vendorName: EditorVendorName): `snip.${EditorVendorName}` =>
   `snip.${vendorName}`;

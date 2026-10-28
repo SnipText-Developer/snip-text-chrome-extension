@@ -1,3 +1,4 @@
+import { vendors, isComposeUrl } from "../config/vendors";
 import { UrlObserver } from "./controller/editor-handler/observer/url-observer";
 import { runAfterRender } from "./common/wrap-run-after-render";
 import { sendMessage } from "../common/message-bus";
@@ -7,28 +8,26 @@ import {
 } from "./controller/editor-handler";
 import { createEditorRouter, listenEditorRouter } from "./editor-router";
 
-const NAVER_EDITOR_URL = "mail.naver.com/v2/new";
-const NAVER_EDITOR_SELECTOR =
-  'div.workseditor-content[class="workseditor-content"][contenteditable="true"]';
+const vendor = vendors.find((item) => item.script === "naver")!;
 
 function startNaverObserver(): void {
   if (window.self !== window.top) {
     return;
   }
 
-  if (!window.location.href.includes(NAVER_EDITOR_URL)) {
+  if (!isComposeUrl(vendor.id, window.location.href)) {
     return;
   }
 
   const naverObserver = new UrlObserver(async () => {
-    const isEditable = naverObserver.getUrl()?.includes(NAVER_EDITOR_URL);
+    const isEditable = isComposeUrl(vendor.id, naverObserver.getUrl());
     await sendMessage({
       src: "CONTENT",
       dst: "BACKGROUND",
       path: "/editor/update-status",
       method: "PUT",
       data: {
-        vendorName: "NAVER",
+        vendorName: vendor.id,
         status: { isEditable },
       },
     });
@@ -39,15 +38,15 @@ function startNaverObserver(): void {
 
 function startNaverEditorObserver(): EditorObserver | null {
   return startEditorObserver({
-    vendorName: "NAVER",
-    selector: NAVER_EDITOR_SELECTOR,
+    vendorName: vendor.id,
+    selector: vendor.editorSelector,
     observerType: "COMBINED",
     shouldInitialize: () => {
       if (window.self === window.top) {
         return false;
       }
 
-      if (!document.querySelector(NAVER_EDITOR_SELECTOR)) {
+      if (!document.querySelector(vendor.editorSelector)) {
         return false;
       }
 
@@ -64,7 +63,7 @@ runAfterRender(() => {
   if (observer) {
     listenEditorRouter(
       createEditorRouter({
-        vendorName: "NAVER",
+        vendorName: vendor.id,
         getEditor: () => observer.getEditor(),
         getEditorStatus: () => observer.getEditorStatus(),
       }),

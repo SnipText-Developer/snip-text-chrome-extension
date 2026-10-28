@@ -1,12 +1,7 @@
 import { useContext } from "react";
 import { EditorStatusContext } from "../context/editorStatusContext";
-import type { EditorVendorName } from "../core/data-types";
+import { vendors } from "../config/vendors";
 import "./EditorStatusTestPanel.css";
-
-const vendors: { value: EditorVendorName; label: string }[] = [
-  { value: "GOOGLE", label: "Gmail" },
-  { value: "NAVER", label: "네이버 메일" },
-];
 
 export default function EditorStatusTestPanel() {
   const editorState = useContext(EditorStatusContext);
@@ -17,7 +12,7 @@ export default function EditorStatusTestPanel() {
       <p className="editor-test-help">
         메일 작성 창을 열거나 본문을 수정하면 수신 횟수와 내용이 갱신됩니다.
       </p>
-      {vendors.map(({ value, label }) => {
+      {vendors.map(({ id: value, mailName: label }) => {
         const status = editorState?.statuses[value];
         return (
           <section className="editor-test-vendor" key={value} aria-label={`${label} 에디터 상태`}>

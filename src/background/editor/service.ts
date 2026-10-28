@@ -1,10 +1,11 @@
+import { isVendorName } from "../../config/vendors";
 import type { EditorStatus, EditorVendorName } from "../../core/data-types";
 import { repository } from "./repository";
 
 export class EditorValidationError extends Error {}
 
 function assertVendorName(value: unknown): asserts value is EditorVendorName {
-  if (value !== "GOOGLE" && value !== "NAVER") {
+  if (!isVendorName(value)) {
     throw new EditorValidationError("지원하지 않는 메일 서비스입니다.");
   }
 }
