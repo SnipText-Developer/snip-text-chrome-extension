@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { TemplateList } from "./TemplateList";
 import { TemplateVariablesForm } from "./TemplateVariablesForm";
-import { useTemplatePopup } from "../hooks/useTemplatePopup";
+import { useMiniPopup } from "../hooks/useMiniPopup";
 import { usePopupPosition } from "../hooks/usePopupPosition";
 import styles from "../styles/popup.css?inline";
 
@@ -12,9 +12,9 @@ interface Props extends StartPopupOptions {
   shadow: ShadowRoot;
 }
 
-export function TemplatePopup({ selector, getTemplates, host, shadow }: Props) {
+export function MiniPopup({ selector, getTemplates, host, shadow }: Props) {
   const popup = useRef<HTMLDivElement>(null);
-  const state = useTemplatePopup(selector, getTemplates, host, shadow);
+  const state = useMiniPopup(selector, getTemplates, host, shadow);
   usePopupPosition(host, popup, state.anchor, state.open);
   const selected = state.selectedTemplate;
 

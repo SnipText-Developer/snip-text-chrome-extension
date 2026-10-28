@@ -40,7 +40,7 @@ export class EditorPollingObserver implements EditorObserver {
   getEditorStatus() {
     return {
       isEditable: this.isEditable,
-      text: this.currentEditor?.textContent?.replace(/\u200B/g, "") ?? "",
+      text: this.currentEditor?.textContent?.replace(/\u200B/g, "").normalize("NFC") ?? "",
     };
   }
 

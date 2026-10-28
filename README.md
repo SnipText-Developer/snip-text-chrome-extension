@@ -108,17 +108,17 @@ vendor는 `google` 또는 `naver`입니다. 허용되지 않은 발신자는 응
 
 ### React 템플릿 팝업
 
-콘텐츠 스크립트의 `packages/template-popup/src/index.ts`는 닫힌 Shadow DOM과 React root만 생성합니다. `useTemplatePopup`이 React 상태·메시지 조회·키보드·포커스 이벤트를 관리하고, `usePopupPosition`이 위치 계산과 스크롤·리사이즈 이벤트를 처리합니다. `TemplatePopup.tsx`, `TemplateList.tsx`, `TemplateVariablesForm.tsx`가 UI를 담당합니다. 스타일은 `styles/popup.css`를 문자열로 번들에 포함해 React의 `<style>`로 Shadow DOM에 적용합니다. `useEditor`가 React ref와 콜백으로 커서·삽입·포커스 복원을 관리하고, `utils/text.ts`는 변수 추출과 공백 처리를 담당합니다.
+콘텐츠 스크립트의 `packages/mini-popup/src/index.ts`는 닫힌 Shadow DOM과 React root만 생성합니다. `useMiniPopup`이 React 상태·메시지 조회·키보드·포커스 이벤트를 관리하고, `usePopupPosition`이 위치 계산과 스크롤·리사이즈 이벤트를 처리합니다. `MiniPopup.tsx`, `TemplateList.tsx`, `TemplateVariablesForm.tsx`가 UI를 담당합니다. 스타일은 `styles/popup.css`를 문자열로 번들에 포함해 React의 `<style>`로 Shadow DOM에 적용합니다. `useEditor`가 React ref와 콜백으로 커서·삽입·포커스 복원을 관리하고, `utils/text.ts`는 변수 추출과 공백 처리를 담당합니다.
 
-팝업 키 이벤트는 React 처리 후 메일 페이지로의 전파를 차단합니다. 테스트는 `node --test tests/template-popup.test.mjs`로 실행하며 목록 선택, 변수 입력, 한글 조합 입력, 취소와 비동기 응답 경합, 언마운트 후 리스너 정리를 확인합니다.
+팝업 키 이벤트는 React 처리 후 메일 페이지로의 전파를 차단합니다. 테스트는 `node --test tests/mini-popup.test.mjs`로 실행하며 목록 선택, 변수 입력, 한글 조합 입력, 취소와 비동기 응답 경합, 언마운트 후 리스너 정리를 확인합니다.
 
 
-### template-popup 패키지
+### mini-popup 패키지
 
-`packages/template-popup`은 독립 React 패키지 `@snip-text/template-popup`입니다. Chrome API 호출은 사용처에서 주입합니다. `npm run build:popup`으로 ESM 번들과 타입 선언을 생성하며, 전체 `npm run build`에서도 먼저 빌드합니다.
+`packages/mini-popup`은 독립 React 패키지 `@snip-text/mini-popup`입니다. Chrome API 호출은 사용처에서 주입합니다. `npm run build:popup`으로 ESM 번들과 타입 선언을 생성하며, 전체 `npm run build`에서도 먼저 빌드합니다.
 
 ```ts
-import { startPopup } from "@snip-text/template-popup";
+import { startPopup } from "@snip-text/mini-popup";
 
 const stopPopup = startPopup({
   selector: '[contenteditable="true"]',

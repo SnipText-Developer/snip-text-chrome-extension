@@ -1,4 +1,4 @@
-import { startPopup } from "@snip-text/template-popup";
+import { startPopup } from "@snip-text/mini-popup";
 import { EditorMutationObserver } from "./observer/editor-mutation-observer";
 import { EditorPollingObserver } from "./observer/editor-polling-observer";
 import { EditorCombinedObserver } from "./observer/editor-combined-observer";

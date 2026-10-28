@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "npm --workspace @snip-text/sidebar run dev",
     "build": "npm run build:popup && tsc && webpack --config webpack.config.cjs && npm run build:sidebar",
-    "build:popup": "npm --workspace @snip-text/template-popup run build",
+    "build:popup": "npm --workspace @snip-text/mini-popup run build",
     "build:sidebar": "npm --workspace @snip-text/sidebar run build && node --input-type=module -e \"import {rmSync,cpSync} from 'node:fs'; rmSync('dist/src/page',{recursive:true,force:true}); cpSync('packages/sidebar/dist','dist/src/page',{recursive:true});\""
   },
   "devDependencies": {
@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@noble/ciphers": "^2.4.0",
-    "@snip-text/template-popup": "*"
+    "@snip-text/mini-popup": "*"
   },
   "workspaces": [
     "packages/*"

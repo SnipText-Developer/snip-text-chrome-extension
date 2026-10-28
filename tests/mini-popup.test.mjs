@@ -31,9 +31,9 @@ function moduleUrl(path) {
   modules.set(url.href, result);
   return result;
 }
-const { getTemplateVariables, preserveEditorSpaces } = await import(moduleUrl("../packages/template-popup/src/utils/text.ts"));
+const { getTemplateVariables, preserveEditorSpaces } = await import(moduleUrl("../packages/mini-popup/src/utils/text.ts"));
 
-const { useTemplateContent } = await import(moduleUrl("../packages/template-popup/src/hooks/useTemplateContent.ts"));
+const { useTemplateContent } = await import(moduleUrl("../packages/mini-popup/src/hooks/useTemplateContent.ts"));
 
 test("React content hook replaces repeated variables and preserves empty or missing values", () => {
   function Content({ text, values }) {
@@ -64,7 +64,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   });
   const templates = [
     { templateId: 1, title: "본문", shortcut: "/1", content: "일반 본문", variables: [] },
-    { templateId: 2, title: "안내", shortcut: "/2", content: "{{이름}}님 {{금액}}원", variables: ["이름", "금액"] },
+    { templateId: 2, title: "견적 안내", shortcut: "/견적", content: "{{이름}}님 {{금액}}원", variables: ["이름", "금액"] },
   ];
   let deferred;
   let holdResponse = false;
@@ -85,7 +85,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
     editor.textContent = text;
     return true;
   };
-  const { startPopup } = await import(moduleUrl("../packages/template-popup/src/index.ts"));
+  const { startPopup } = await import(moduleUrl("../packages/mini-popup/src/index.ts"));
   let stop;
   await act(async () => { stop = startPopup({ selector: "#editor", getTemplates }); });
   t.after(async () => { await act(async () => { stop(); }); dom.window.close(); });
@@ -113,6 +113,60 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   assert.equal(shadow.querySelector('[role="option"]').getAttribute("aria-selected"), "true");
   await act(async () => { key(editor, "Enter"); });
   assert.equal(inserted.at(-1), "일반 본문");
+
+  await open();
+  const beforeComposition = requests;
+  for (const query of ["겨", "견", "견적", "견적".normalize("NFD")]) {
+    const requestsBeforeSyllable = requests;
+    await act(async () => {
+      editor.dispatchEvent(new window.CompositionEvent("compositionstart", { bubbles: true }));
+      editor.textContent = `/${query}`;
+      const range = document.createRange();
+      range.setStart(editor.firstChild, query.length);
+      range.setEnd(editor.firstChild, query.length + 1);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+      editor.dispatchEvent(new window.InputEvent("input", { bubbles: true, isComposing: true }));
+      document.dispatchEvent(new window.Event("selectionchange"));
+
+      await settle();
+    });
+    assert.notEqual(shadow.host.style.display, "none");
+    assert.ok(requests > requestsBeforeSyllable);
+    const composingOptions = shadow.querySelectorAll('[role="option"]');
+    assert.equal(composingOptions.length, query === "겨" ? 0 : 1);
+    if (query !== "겨") assert.match(composingOptions[0].getAttribute("aria-label"), /견적/);
+    assert.equal(inserted.length, 1);
+    await act(async () => {
+      window.getSelection().collapse(editor.firstChild, query.length + 1);
+      editor.dispatchEvent(new window.CompositionEvent("compositionend", { bubbles: true }));
+
+      await settle();
+    });
+    assert.notEqual(shadow.host.style.display, "none");
+    assert.equal(shadow.querySelectorAll('[role="option"]').length, query === "겨" ? 0 : 1);
+    if (query !== "겨") assert.match(shadow.querySelector('[role="option"]').textContent, /견적/);
+  }
+  assert.ok(requests > beforeComposition);
+  assert.equal(inserted.length, 1);
+
+  for (const afterComposition of [false, true]) {
+    await open();
+    await act(async () => {
+      editor.dispatchEvent(new window.CompositionEvent("compositionstart", { bubbles: true }));
+      editor.textContent = "/견적";
+      window.getSelection().collapse(editor.firstChild, 3);
+      editor.dispatchEvent(new window.InputEvent("input", { bubbles: true, isComposing: true }));
+      await settle();
+      if (!afterComposition) key(editor, "Enter", { isComposing: true, keyCode: 229 });
+      editor.dispatchEvent(new window.CompositionEvent("compositionend", { bubbles: true }));
+      if (afterComposition) key(editor, "Enter", { keyCode: 229 });
+      await settle();
+    });
+    assert.equal(shadow.activeElement, shadow.querySelector("input"));
+    assert.ok(shadow.querySelector("input"), "One IME Enter selects the quotation template");
+    await act(async () => { key(shadow.querySelector("input"), "Escape"); });
+  }
 
   await open();
   await act(async () => { key(editor, "ArrowDown"); key(editor, "Enter"); });

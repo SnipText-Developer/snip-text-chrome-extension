@@ -1,4 +1,4 @@
-import { getTemplateVariables } from "@snip-text/template-popup";
+import { getTemplateVariables } from "@snip-text/mini-popup";
 import TemplateInsertPage from "./TemplateInsertPage";
 import { useContext, useEffect, useState } from "react";
 import { sendMessage } from "../common/sendMessage";

@@ -10,6 +10,17 @@ interface PopupState {
   message?: string;
 }
 const initialState: PopupState = { open: false, templates: [], active: 0, selectedTemplate: null };
+
+function matchesQuery(template: Template, query: string) {
+  const searchableText = `${template.title} ${template.shortcut} ${template.content}`;
+  return searchableText.normalize("NFC").toLocaleLowerCase().includes(query);
+}
+
+function consumeKey(event: KeyboardEvent) {
+  event.preventDefault();
+  event.stopImmediatePropagation();
+}
+
 interface Actions {
   choose: (template: Template) => void;
   select: (index: number) => void;
@@ -17,7 +28,7 @@ interface Actions {
   insert: (text: string) => void;
 }
 
-export function useTemplatePopup(selector: string, getTemplates: StartPopupOptions["getTemplates"], host: HTMLElement, shadow: ShadowRoot) {
+export function useMiniPopup(selector: string, getTemplates: StartPopupOptions["getTemplates"], host: HTMLElement, shadow: ShadowRoot) {
   const [state, setState] = useState(initialState);
   // Native key events may arrive within the same React batch.
   const currentState = useRef(state);
@@ -27,87 +38,122 @@ export function useTemplatePopup(selector: string, getTemplates: StartPopupOptio
   const actions = useRef<Actions | null>(null);
 
   useEffect(() => {
-    let generation = 0;
+    let requestVersion = 0;
     let disposed = false;
     let dismissed = false;
-    function publish(next: PopupState) {
+    let pendingEnter = false;
+    function setPopupState(next: PopupState) {
       currentState.current = next;
       setState(next);
     }
     function close() {
-      generation++;
+      pendingEnter = false;
+      requestVersion++;
       editor.clear();
       host.style.display = "none";
-      publish(initialState);
+      setPopupState(initialState);
     }
     function insert(text: string) {
       if (!editor.insertText(text, close)) close();
     }
 
     function choose(template: Template) {
-      generation++;
+      pendingEnter = false;
+      requestVersion++;
       if (!anchor.current?.editor.isConnected) return close();
       if (!template.variables.length) return insert(template.content);
-      publish({ ...currentState.current, selectedTemplate: template });
+      setPopupState({ ...currentState.current, selectedTemplate: template });
     }
     function select(index: number) {
-      publish({ ...currentState.current, active: index });
+      setPopupState({ ...currentState.current, active: index });
     }
     function cancel() {
       dismissed = true;
       editor.restoreFocus(close);
     }
 
-    async function update() {
-      if (disposed || dismissed || composing.current || currentState.current.selectedTemplate || document.activeElement === host) return;
-      const match = editor.findTrigger();
-      if (!match) return close();
-      const request = ++generation;
-      publish({ ...initialState, open: true, message: "템플릿 불러오는 중…" });
+    async function updateTemplates() {
+      if (disposed || dismissed || currentState.current.selectedTemplate || document.activeElement === host) return;
+      const match = editor.findTrigger(composing.current);
+      // Selection can be temporarily unavailable while the IME updates the DOM.
+      if (!match) {
+        if (!composing.current) close();
+        return;
+      }
+      const request = ++requestVersion;
+      setPopupState({ ...initialState, open: true, message: "템플릿 불러오는 중…" });
       try {
         const result = await getTemplates();
-        if (disposed || request !== generation) return;
+        if (disposed || request !== requestVersion) return;
         if (!Array.isArray(result)) throw new Error("Invalid template list");
-        const templates = result.filter((template) =>
-          `${template.title} ${template.shortcut} ${template.content}`.toLocaleLowerCase().includes(match.query),
-        );
-        publish({ ...initialState, open: true, templates });
+        const templates = result.filter((template) => matchesQuery(template, match.query));
+        setPopupState({ ...initialState, open: true, templates });
+        if (pendingEnter && !composing.current) {
+          pendingEnter = false;
+          if (templates.length) choose(templates[0]);
+        }
       } catch {
-        if (disposed || request !== generation) return;
-        publish({ ...currentState.current, message: "템플릿을 불러오지 못했습니다. 다시 입력해주세요." });
+        if (disposed || request !== requestVersion) return;
+        pendingEnter = false;
+        setPopupState({ ...currentState.current, message: "템플릿을 불러오지 못했습니다. 다시 입력해주세요." });
       }
     }
-    function onInput() { dismissed = false; void update(); }
-    function onSelectionChange() { void update(); }
+    function onInput() {
+      dismissed = false;
+      void updateTemplates();
+    }
     function onCompositionStart() {
       composing.current = true;
-      if (!currentState.current.selectedTemplate) close();
+      // Keep the list and anchor while the IME temporarily changes selection.
+      // Ignore responses requested before composition started.
+      requestVersion++;
     }
-    function onCompositionEnd() { composing.current = false; void update(); }
+    function onCompositionEnd() {
+      composing.current = false;
+      void updateTemplates();
+    }
     function onKeyDown(event: KeyboardEvent) {
-      if (!anchor.current || composing.current || event.isComposing) return;
+      if (!anchor.current) return;
+
       const snapshot = currentState.current;
-      if (snapshot.selectedTemplate) {
-        if (event.key === "Escape") {
-          event.preventDefault();
+      const isConfirmKey = event.key === "Enter" && !event.shiftKey;
+      const isCompositionKey = composing.current || event.isComposing || event.keyCode === 229;
+
+      if (isCompositionKey) {
+        if (!snapshot.selectedTemplate && isConfirmKey) {
+          pendingEnter = true;
+          // Keep the default action so the IME can commit the final syllable.
           event.stopImmediatePropagation();
-          cancel();
+          if (!composing.current && !event.isComposing) void updateTemplates();
         }
         return;
       }
+
       if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        dismissed = true;
-        close();
-      } else if ((event.key === "ArrowDown" || event.key === "ArrowUp") && snapshot.templates.length) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        select((snapshot.active + (event.key === "ArrowDown" ? 1 : -1) + snapshot.templates.length) % snapshot.templates.length);
-      } else if (event.key === "Enter" && snapshot.templates.length && !event.shiftKey) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        choose(snapshot.templates[snapshot.active]);
+        consumeKey(event);
+        if (snapshot.selectedTemplate) cancel();
+        else {
+          dismissed = true;
+          close();
+        }
+        return;
+      }
+      if (snapshot.selectedTemplate || !snapshot.templates.length) return;
+
+      switch (event.key) {
+        case "ArrowDown":
+        case "ArrowUp": {
+          consumeKey(event);
+          const direction = event.key === "ArrowDown" ? 1 : -1;
+          const count = snapshot.templates.length;
+          select((snapshot.active + direction + count) % count);
+          break;
+        }
+        case "Enter":
+          if (!isConfirmKey) return;
+          consumeKey(event);
+          choose(snapshot.templates[snapshot.active]);
+          break;
       }
     }
     function onMouseDown(event: MouseEvent) {
@@ -126,7 +172,7 @@ export function useTemplatePopup(selector: string, getTemplates: StartPopupOptio
     }
     actions.current = { choose, select, cancel, insert };
     document.addEventListener("input", onInput);
-    document.addEventListener("selectionchange", onSelectionChange);
+    document.addEventListener("selectionchange", updateTemplates);
     document.addEventListener("compositionstart", onCompositionStart);
     document.addEventListener("compositionend", onCompositionEnd);
     document.addEventListener("mousedown", onMouseDown);
@@ -134,13 +180,13 @@ export function useTemplatePopup(selector: string, getTemplates: StartPopupOptio
     window.addEventListener("keydown", onKeyDown, true);
     return () => {
       disposed = true;
-      generation++;
+      requestVersion++;
       actions.current = null;
       editor.clear();
       composing.current = false;
       host.style.display = "none";
       document.removeEventListener("input", onInput);
-      document.removeEventListener("selectionchange", onSelectionChange);
+      document.removeEventListener("selectionchange", updateTemplates);
       document.removeEventListener("compositionstart", onCompositionStart);
       document.removeEventListener("compositionend", onCompositionEnd);
       document.removeEventListener("mousedown", onMouseDown);
@@ -150,7 +196,8 @@ export function useTemplatePopup(selector: string, getTemplates: StartPopupOptio
   }, [editor, anchor, getTemplates, host, shadow]);
 
   return {
-    ...state, anchor,
+    ...state,
+    anchor,
     onChoose: useCallback((template: Template) => actions.current?.choose(template), []),
     onActiveChange: useCallback((index: number) => actions.current?.select(index), []),
     onCancel: useCallback(() => actions.current?.cancel(), []),

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getTemplateVariables, useTemplateContent } from "@snip-text/template-popup";
+import { getTemplateVariables, useTemplateContent } from "@snip-text/mini-popup";
 import type { Template } from "../core/data-types";
 import "./TemplateInsertPage.css";
 

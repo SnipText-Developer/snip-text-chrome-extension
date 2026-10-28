@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 import type { StartPopupOptions } from "./types";
-import { TemplatePopup } from "./components/TemplatePopup";
+import { MiniPopup } from "./components/MiniPopup";
 
 export { getTemplateVariables, preserveEditorSpaces } from "./utils/text";
 
@@ -11,7 +11,7 @@ export function startPopup({ selector, getTemplates }: StartPopupOptions): () =>
   const shadow = host.attachShadow({ mode: "closed" });
   document.documentElement.append(host);
   const root = createRoot(shadow);
-  root.render(createElement(TemplatePopup, { selector, getTemplates, host, shadow }));
+  root.render(createElement(MiniPopup, { selector, getTemplates, host, shadow }));
   let stopped = false;
   return () => {
     if (stopped) return;
