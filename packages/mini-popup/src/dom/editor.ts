@@ -9,15 +9,8 @@ function containsRange(editor: HTMLElement, range: Range): boolean {
   return editor.isConnected && editor.contains(range.startContainer) && editor.contains(range.endContainer);
 }
 
-function moveCaret(editor: HTMLElement, range: Range) {
-  editor.focus({ preventScroll: true });
-  const selection = editor.ownerDocument.getSelection();
-  selection?.removeAllRanges();
-  selection?.addRange(range);
-}
-
-export function findEditorAnchor(selector: string, isComposing: boolean): EditorAnchor | null {
-  const selection = document.getSelection();
+export function findEditorAnchor(selector: string, isComposing: boolean, doc: Document = document): EditorAnchor | null {
+  const selection = doc.getSelection();
   if (!selection?.rangeCount || (!isComposing && !selection.isCollapsed)) return null;
 
   const caret = selection.getRangeAt(0).cloneRange();
@@ -26,7 +19,7 @@ export function findEditorAnchor(selector: string, isComposing: boolean): Editor
     ? caret.endContainer as Element
     : caret.endContainer.parentElement;
   const editor = element?.closest<HTMLElement>(selector);
-  if (!editor || !editor.contains(document.activeElement) || !containsRange(editor, caret)) return null;
+  if (!editor || !editor.contains(doc.activeElement) || !containsRange(editor, caret)) return null;
 
   const prefix = editor.ownerDocument.createRange();
   prefix.selectNodeContents(editor);
@@ -51,20 +44,32 @@ export function findEditorAnchor(selector: string, isComposing: boolean): Editor
   return null;
 }
 
-export interface EditorSnapshot {
-  editor: HTMLElement;
-  range: Range;
+function isValidAnchor(anchor: EditorAnchor | null): boolean {
+  // Mail pages can rewrite the DOM and move live ranges while the popup is open.
+  return !!anchor && containsRange(anchor.editor, anchor.trigger)
+    && anchor.trigger.toString() === anchor.text;
 }
 
-export function snapshotEditor(anchor: EditorAnchor | null): EditorSnapshot | null {
-  if (!anchor || !containsRange(anchor.editor, anchor.trigger)) return null;
-  // Mail pages may rewrite the DOM and move live ranges after opening the popup.
-  if (anchor.trigger.toString() !== anchor.text) return null;
-  return { editor: anchor.editor, range: anchor.trigger.cloneRange() };
-}
-
-export function restoreEditorFocus({ editor, range }: EditorSnapshot): void {
-  if (!containsRange(editor, range)) return;
-  range.collapse(false);
-  moveCaret(editor, range);
+/** Selection state belongs to the editor adapter, never to React state. */
+export function createEditorDom(selector: string, doc: Document) {
+  let anchor: EditorAnchor | null = null;
+  return {
+    clear() { anchor = null; },
+    matches(target: EventTarget | null): boolean {
+      return target instanceof Element && target.closest(selector) !== null;
+    },
+    isConnected(): boolean { return anchor?.editor.isConnected === true; },
+    findTrigger(composing = false) {
+      const found = findEditorAnchor(selector, composing, doc);
+      if (!found) return null;
+      anchor = found;
+      return { query: found.query, editorId: found.editor as object };
+    },
+    isInsertionValid(): boolean { return isValidAnchor(anchor); },
+    getBounds(): DOMRect | null {
+      if (!anchor?.editor.isConnected) return null;
+      const rect = anchor.trigger.getBoundingClientRect();
+      return rect.height ? rect : anchor.editor.getBoundingClientRect();
+    },
+  };
 }

@@ -278,22 +278,66 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   assert.equal(host.querySelectorAll('[role="option"]').length, 2);
   assert.ok(document.activeElement === host.querySelectorAll('[role="option"]')[1]);
   assert.equal(document.activeElement.getAttribute("aria-selected"), "true");
+  await act(async () => host.querySelectorAll('[role="option"]')[1].click());
+  let leakedInputKeys = 0;
+  const observeInputKey = () => leakedInputKeys++;
+  for (const type of ["keydown", "keyup", "keypress"]) window.addEventListener(type, observeInputKey, true);
+  try {
+    for (const type of ["keydown", "keyup", "keypress"]) {
+      const event = new window.KeyboardEvent(type, { key: "a", bubbles: true, cancelable: true });
+      await act(async () => host.querySelector("input").dispatchEvent(event));
+      assert.equal(event.defaultPrevented, false, "Text entry keeps its native default action");
+    }
+    assert.equal(leakedInputKeys, 0, "Input keyboard events must stay inside the popup");
+  } finally {
+    for (const type of ["keydown", "keyup", "keypress"]) window.removeEventListener(type, observeInputKey, true);
+  }
+  await act(async () => host.querySelector('button[type="button"]').click());
   const requestsBeforeCancel = requests;
   await act(async () => { host.querySelectorAll('[role="option"]')[1].click(); });
   await act(async () => { host.querySelector('button[type="button"]').click(); });
   assert.equal(host.querySelectorAll('[role="option"]').length, 2, "Cancel returns to the previous list");
   assert.ok(document.activeElement === host.querySelectorAll('[role="option"]')[1]);
   assert.equal(requests, requestsBeforeCancel, "Returning to the list does not reload templates");
+  let mailArrowCalls = 0;
+  const mailWindowKeyHandler = (event) => {
+    if (event.key !== "ArrowUp") return;
+    mailArrowCalls++;
+    document.body.dispatchEvent(new window.MouseEvent("pointerdown", { bubbles: true }));
+  };
+  window.addEventListener("keydown", mailWindowKeyHandler, true);
+  try {
+    await act(async () => { key(document.activeElement, "ArrowUp"); });
+    assert.notEqual(host.style.display, "none", "Input → cancel → ArrowUp keeps the popup open even with a mail window key handler");
+    assert.equal(mailArrowCalls, 0, "Consumed navigation must not reach other window capture handlers");
+    assert.equal(document.activeElement === host.querySelector('[role="option"]'), true);
+    assert.equal(inserted.length, 2, "ArrowUp must not insert a template");
+  } finally {
+    window.removeEventListener("keydown", mailWindowKeyHandler, true);
+  }
+
   await act(async () => { key(document.activeElement, "Escape"); });
-  assert.ok(document.activeElement === editor);
-  assert.equal(host.style.display, "none");
+  assert.notEqual(host.style.display, "none", "Escape must not close the popup");
+  await act(async () => {
+    editor.focus();
+    const caret = document.createRange();
+    caret.setStart(editor.firstChild, 0);
+    caret.collapse(true);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(caret);
+    document.dispatchEvent(new window.Event("selectionchange"));
+    await settle();
+  });
+  assert.notEqual(host.style.display, "none", "Losing the slash trigger through caret movement keeps the popup open");
+
 
   await open();
   await act(async () => { key(editor, "ArrowDown"); key(editor, "Enter"); });
   const outside = document.createElement("input");
   document.body.append(outside);
   await act(async () => { outside.focus(); });
-  assert.equal(host.style.display, "none", "Keyboard focus outside closes the popup");
+  assert.notEqual(host.style.display, "none", "Keyboard focus outside keeps the popup open");
+  await act(async () => document.body.dispatchEvent(new window.MouseEvent("pointerdown", { bubbles: true })));
   outside.remove();
 
   await open();
@@ -331,7 +375,8 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
     host.querySelector("form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
   });
   assert.equal(editor.textContent, "메일 페이지에서 갱신한 본문", "A stale trigger must not overwrite the updated editor");
-  assert.equal(host.style.display, "none");
+  assert.notEqual(host.style.display, "none", "A stale trigger reports an error without closing");
+  assert.match(host.querySelector('[role="status"]').textContent, /작성 창이 변경/);
 
   const multilineEditor = document.createElement("div");
   multilineEditor.setAttribute("contenteditable", "true");
@@ -391,6 +436,8 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   });
   assert.equal(delivered.length, beforePending + 1, "Only one insertion request is allowed at a time");
   assert.equal(host.querySelector("input").disabled, true);
+  await act(async () => document.body.dispatchEvent(new window.MouseEvent("pointerdown", { bubbles: true })));
+  assert.equal(host.style.display, "none", "Outside clicks close the popup even while insertion is pending");
   await act(async () => { finishInsertion(); await settle(); });
   holdInsertion = undefined;
   assert.equal(host.style.display, "none");
@@ -438,7 +485,11 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   assert.equal(host.querySelectorAll('[role="option"]').length, 2);
   await act(async () => { key(editor, "Escape"); });
   await open();
-  await act(async () => { key(editor, "Escape"); deferred(templates); await settle(); });
+  await act(async () => {
+    document.body.dispatchEvent(new window.MouseEvent("pointerdown", { bubbles: true }));
+    deferred(templates);
+    await settle();
+  });
   assert.equal(host.style.display, "none");
 
   await open();

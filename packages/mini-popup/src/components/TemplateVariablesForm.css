@@ -70,12 +70,7 @@
   color: #737373;
 }
 
-#snip-text-mini-popup input:focus {
-  background: #fff;
-  border-color: #737373;
-  outline: 0.125rem solid #737373;
-  outline-offset: 0.0625rem;
-}
+
 
 #snip-text-mini-popup .actions {
   display: flex;
@@ -100,10 +95,7 @@
   background: #e5e5e5;
 }
 
-#snip-text-mini-popup .actions button:focus-visible {
-  outline: 0.125rem solid #737373;
-  outline-offset: 0.0625rem;
-}
+
 
 #snip-text-mini-popup .actions button[type="submit"] {
   background: #171c26;

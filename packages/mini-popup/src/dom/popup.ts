@@ -1,4 +1,3 @@
-import type { EditorAnchor } from "./editor";
 
 export function focusPopupOption(list: HTMLElement | null, index: number): void {
   list?.querySelectorAll<HTMLButtonElement>('[role="option"]')[index]?.focus({ preventScroll: true });
@@ -22,7 +21,7 @@ export function revealPopupOption(host: HTMLElement, index: number): void {
     list.scrollTop = Math.max(0, list.scrollHeight - list.clientHeight);
     return;
   }
-  const style = window.getComputedStyle(list);
+  const style = host.ownerDocument.defaultView!.getComputedStyle(list);
   const viewportTop = list.getBoundingClientRect().top + list.clientTop;
   const top = viewportTop + (parseFloat(style.scrollPaddingTop) || 0);
   const bottom = viewportTop + list.clientHeight - (parseFloat(style.scrollPaddingBottom) || 0);
@@ -35,14 +34,15 @@ export function hidePopup(host: HTMLElement): void {
   host.style.display = "none";
 }
 
-export function positionPopup(host: HTMLElement, popup: HTMLElement, anchor: EditorAnchor): void {
-  const rect = anchor.trigger.getBoundingClientRect();
-  const bounds = rect.height ? rect : anchor.editor.getBoundingClientRect();
-  host.style.display = "block";
-  const { width, height } = popup.getBoundingClientRect();
-  const left = Math.max(8, Math.min(bounds.left, window.innerWidth - width - 8));
-  const fitsBelow = bounds.bottom + height + 6 <= window.innerHeight;
-  const top = Math.max(8, fitsBelow ? bounds.bottom + 6 : bounds.top - height - 6);
-  host.style.left = `${left}px`;
-  host.style.top = `${top}px`;
+export function createPopupDom(host: HTMLElement) {
+  return {
+    contains(target: EventTarget | null): boolean {
+      return target instanceof Node && host.contains(target);
+    },
+    hasFocus(): boolean { return host.contains(host.ownerDocument.activeElement); },
+    getOptionIndex(target: EventTarget | null): number { return getPopupOptionIndex(host, target); },
+    focusOption(index: number) { focusPopupOption(host, index); },
+    revealOption(index: number) { revealPopupOption(host, index); },
+    hide() { hidePopup(host); },
+  };
 }

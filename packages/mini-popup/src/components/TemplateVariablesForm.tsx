@@ -1,5 +1,6 @@
 import styles from "./TemplateVariablesForm.css?inline";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { preventDefault } from "../dom/index";
 import type { Template } from "../types";
 import { useTemplateContent } from "../hooks/useTemplateContent";
 
@@ -15,9 +16,7 @@ export function TemplateVariablesForm({ template, busy, onCancel, onInsert }: Pr
     Object.fromEntries(template.variables.map((name) => [name, ""])),
   );
   const content = useTemplateContent(template.content, values);
-  const firstInput = useRef<HTMLInputElement>(null);
   const composing = useRef(false);
-  useLayoutEffect(() => { firstInput.current?.focus(); }, []);
 
   return (
     <>
@@ -27,7 +26,7 @@ export function TemplateVariablesForm({ template, busy, onCancel, onInsert }: Pr
           onCompositionStart={() => { composing.current = true; }}
           onCompositionEnd={() => { composing.current = false; }}
           onSubmit={(event) => {
-            event.preventDefault();
+            preventDefault(event);
             if (composing.current || busy) return;
             onInsert(content);
           }}>
@@ -37,7 +36,7 @@ export function TemplateVariablesForm({ template, busy, onCancel, onInsert }: Pr
                 <label key={variable}>
                   <span>{variable}</span>
                   <input
-                    ref={index === 0 ? firstInput : undefined}
+                    autoFocus={index === 0}
                     type="text"
                     disabled={busy}
                     placeholder={`${variable} 입력`}

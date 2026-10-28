@@ -7,6 +7,7 @@ import normalize from "../styles/normalize.css?inline";
 import common from "../styles/common.css?inline";
 import styles from "./MiniPopup.css?inline";
 
+import { preserveEditorSelection } from "../dom/index";
 import type { StartPopupOptions } from "../types";
 
 interface Props extends StartPopupOptions {
@@ -16,7 +17,7 @@ interface Props extends StartPopupOptions {
 export function MiniPopup({ selector, getTemplates, insertText, host }: Props) {
   const popup = useRef<HTMLDivElement>(null);
   const state = useMiniPopup(selector, getTemplates, insertText, host);
-  usePopupPosition(host, popup, state.anchor, state.open);
+  usePopupPosition(state.dom, popup, state.open);
   const selected = state.selectedTemplate;
 
   return (
@@ -26,12 +27,7 @@ export function MiniPopup({ selector, getTemplates, insertText, host }: Props) {
         <div
           ref={popup}
           className={selected ? "popup variable-entry" : "popup"}
-          onMouseDown={(event) => {
-            const target = event.target;
-            if (target instanceof Element && target.closest("input, button, label, textarea, select, a")) return;
-            // Keep the editor selection when clicking popup padding or headings.
-            event.preventDefault();
-          }}>
+          onMouseDown={preserveEditorSelection}>
           <header>{selected ? `${selected.shortcut} 변수 입력` : "템플릿"}</header>
           {selected ? (
             <TemplateVariablesForm

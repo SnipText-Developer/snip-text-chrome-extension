@@ -108,7 +108,7 @@ vendor는 `google` 또는 `naver`입니다. 허용되지 않은 발신자는 응
 
 ### React 템플릿 팝업
 
-콘텐츠 스크립트의 `packages/mini-popup/src/index.ts`는 일반 DOM 컨테이너와 React root만 생성합니다. `useMiniPopup`이 React 상태·메시지 조회·키보드·포커스 이벤트를 관리하고, `usePopupPosition`이 위치 계산과 스크롤·리사이즈 이벤트를 처리합니다. `MiniPopup.tsx`, `TemplateList.tsx`, `TemplateVariablesForm.tsx`가 UI를 담당합니다. 스타일은 `styles/normalize.css`, `styles/common.css`와 컴포넌트별 CSS를 문자열로 번들에 포함해 React의 `<style>`로 적용합니다. 모든 CSS 선택자는 `#snip-text-mini-popup` 내부로 제한합니다. `dom/editor.ts`가 범위 계산·커서 복원을, `dom/popup.ts`가 팝업 위치 측정·스타일 변경을 담당합니다. `useEditor`는 삽입 위치 저장과 DOM 함수 호출을 관리하고, `utils/text.ts`는 변수 추출·치환을 담당합니다. 공백·개행 인코딩은 `src/content/utils/editor-text.ts`의 `encodeEditorText`로 통일해 실제 삽입 직전에 적용합니다.
+콘텐츠 스크립트의 `packages/mini-popup/src/index.ts`는 일반 DOM 컨테이너와 React root만 생성합니다. `useMiniPopup`이 React 상태·메시지 조회·키보드·포커스 이벤트를 관리하고, `usePopupPosition`이 위치 계산과 스크롤·리사이즈 이벤트를 처리합니다. `MiniPopup.tsx`, `TemplateList.tsx`, `TemplateVariablesForm.tsx`가 UI를 담당합니다. 스타일은 `styles/normalize.css`, `styles/common.css`와 컴포넌트별 CSS를 문자열로 번들에 포함해 React의 `<style>`로 적용합니다. 모든 CSS 선택자는 `#snip-text-mini-popup` 내부로 제한합니다. `dom/index.ts`가 DOM 접근의 단일 진입점이며 에디터·팝업·위치·이벤트·호스트 수명주기를 기능별 모듈로 분리합니다. 커서 상태와 직접적인 DOM 조작은 이 계층 내부에서 관리하고, `utils/text.ts`는 변수 추출·치환을 담당합니다. 공백·개행 인코딩은 `src/content/utils/editor-text.ts`의 `encodeEditorText`로 통일해 실제 삽입 직전에 적용합니다.
 
 팝업은 이벤트 전파를 차단하지 않습니다. 목록의 방향키·Enter·Esc만 처리하고, 변수 입력과 Tab 이동은 브라우저 기본 동작을 사용합니다. 테스트는 `node --test tests/mini-popup.test.mjs`로 실행하며 목록 선택, 변수 입력, 한글 조합 입력, 취소와 비동기 응답 경합, 언마운트 후 리스너 정리를 확인합니다.
 
