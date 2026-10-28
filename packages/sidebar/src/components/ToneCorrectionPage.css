@@ -1,0 +1,61 @@
+.tone-page {
+  display: flex;
+  flex-direction: column;
+  min-height: max(480px, calc(100dvh - 102px));
+  padding: 4px 0 0;
+}
+.tone-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.tone-header h2 { font-size: 20px; font-weight: 750; letter-spacing: -0.5px; }
+.tone-close { color: #8b8f9f; }
+.tone-form { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.tone-options { min-width: 0; margin: 30px 0 0; padding: 0; border: 0; }
+.tone-options legend, .tone-writing > label { padding: 0; font-size: 14px; font-weight: 700; }
+.tone-help {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 8px;
+  border: 1px solid #000;
+  border-radius: 50%;
+  color: #000;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1;
+  cursor: help;
+}
+.tone-help > span {
+  position: absolute;
+  top: 24px;
+  left: -80px;
+  z-index: 1;
+  display: none;
+  width: 220px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #171c27;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.tone-help:hover > span, .tone-help:focus > span { display: block; }
+.tone-options-list { display: flex; gap: 6px; overflow-x: auto; padding: 8px 2px 5px; }
+.tone-option { position: relative; flex-shrink: 0; cursor: pointer; }
+.tone-option input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.tone-option span { display: block; padding: 7px 10px; border: 1px solid #171c27; border-radius: 6px; color: #000; font-size: 12px; font-weight: 650; white-space: nowrap; }
+.tone-option input:checked + span { background: #000; color: #fff; }
+.tone-option input:focus-visible + span { outline: 2px solid #596174; outline-offset: 2px; }
+.tone-writing { display: flex; flex: 1; flex-direction: column; gap: 10px; margin-top: 24px; }
+.tone-writing textarea { flex: 1; width: 100%; min-height: 260px; padding: 14px; resize: vertical; border: 1px solid #bdc6d6; border-radius: 10px; background: #fff; color: #171c27; font-size: 13px; line-height: 1.7; }
+.tone-writing textarea::placeholder { color: #8b8f9f; }
+.tone-notice { color: #596174; font-size: 12px; }
+.tone-notice:not(:empty) { margin-top: 10px; }
+.tone-footer { display: flex; justify-content: flex-end; margin-top: 32px; }
+.tone-footer button { padding: 10px 22px; border-radius: 8px; background: #000; color: #fff; font-size: 13px; font-weight: 700; }
+.tone-footer button:disabled { opacity: 1; color: #b4b4b4; }

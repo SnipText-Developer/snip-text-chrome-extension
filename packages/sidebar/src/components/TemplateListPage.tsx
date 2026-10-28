@@ -8,7 +8,7 @@ import TemplateEmptyState from "./TemplateEmptyState";
 import { EditorStatusContext } from "../context/editorStatusContext";
 import type { Template } from "../core/data-types";
 
-function TemplateListPage() {
+function TemplateListPage({ onOpenToneCorrection }: { onOpenToneCorrection: () => void }) {
   const editorState = useContext(EditorStatusContext);
   const isEditorEditable = Object.values(editorState?.statuses ?? {}).some(
     (status) => status?.isEditable === true,
@@ -172,15 +172,7 @@ function TemplateListPage() {
           <button
             type="button"
             className="template-action tone-correction"
-            disabled={!pageConfig.toneCorrectionUrl.trim()}
-            title={
-              pageConfig.toneCorrectionUrl.trim()
-                ? "AI 톤교정 페이지로 이동"
-                : "config.ts에서 AI 톤교정 URL을 설정해주세요."
-            }
-            onClick={() =>
-              openConfiguredPage(pageConfig.toneCorrectionUrl, "AI 톤교정")
-            }>
+            onClick={onOpenToneCorrection}>
             AI 톤교정
           </button>
           <button

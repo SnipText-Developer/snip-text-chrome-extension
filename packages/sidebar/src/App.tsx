@@ -3,8 +3,11 @@ import EditorStatusTestPanel from "./components/EditorStatusTestPanel";
 import TemplateListPage from "./components/TemplateListPage";
 import { EditorStatusProvider } from "./context/EditorStatusProvider";
 import "./App.css";
+import { useState } from "react";
+import ToneCorrectionPage from "./components/ToneCorrectionPage";
 
 function App() {
+  const [showToneCorrection, setShowToneCorrection] = useState(false);
   // const [showTemplates, setShowTemplates] = useState(
   //   () => window.location.hash === "#templates",
   // );
@@ -46,7 +49,7 @@ function App() {
                 <path d="M10 4H4v16h6M10 12h11m-5-5 5 5-5 5" />
               </svg>
             </button>
-            <button className="icon-button" onClick={() => {}}>
+            <button type="button" className="icon-button" aria-label="템플릿 목록" onClick={() => setShowToneCorrection(false)}>
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -60,8 +63,14 @@ function App() {
             </button>
           </div>
         </header>
-        <TemplateListPage />
-        <EditorStatusTestPanel />
+        {showToneCorrection ? (
+          <ToneCorrectionPage onClose={() => setShowToneCorrection(false)} />
+        ) : (
+          <>
+            <TemplateListPage onOpenToneCorrection={() => setShowToneCorrection(true)} />
+            <EditorStatusTestPanel />
+          </>
+        )}
       </main>
     </EditorStatusProvider>
   );
