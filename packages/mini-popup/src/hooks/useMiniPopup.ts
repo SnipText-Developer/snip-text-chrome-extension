@@ -239,7 +239,7 @@ export function useMiniPopup(selector: string, getTemplates: StartPopupOptions["
 
   useEffect(() => controller.subscribe(), [controller]);
 
-  return {
+  return useMemo(() => ({
     busy: state.busy,
     error: state.error,
     templates: (state.phase === "list" || state.phase === "tones") ? state.templates : [],
@@ -254,5 +254,5 @@ export function useMiniPopup(selector: string, getTemplates: StartPopupOptions["
     onActiveChange: controller.select,
     onCancel: controller.cancel,
     onInsert: controller.insert,
-  };
+  }), [state, dom, controller]);
 }

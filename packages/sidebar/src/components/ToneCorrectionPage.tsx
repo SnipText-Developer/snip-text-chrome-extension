@@ -1,7 +1,6 @@
 import { useContext, useEffect, useRef, useState, type FormEvent } from "react";
 import { EditorStatusContext } from "../context/editorStatusContext";
 import { sendMessage } from "../common/message-bus";
-import InsertBodyButton from "./InsertBodyButton";
 import "./ToneCorrectionPage.css";
 
 const tones = ["상사/외부용", "보고/공문용", "마케팅/설득", "공지/안내", "부드러운 존댓말", "편한 말투"];
@@ -11,7 +10,6 @@ export default function ToneCorrectionPage({ onClose }: { onClose: () => void })
   const editor = useContext(EditorStatusContext)?.latestStatus;
   const text = editor?.text ?? "";
   const [notice, setNotice] = useState("");
-  const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
   const [inserting, setInserting] = useState(false);
   const pending = useRef(false);
@@ -36,7 +34,6 @@ export default function ToneCorrectionPage({ onClose }: { onClose: () => void })
     pending.current = true;
     setLoading(true);
     setNotice("");
-    setResult("");
     try {
       const response = await sendMessage({
         src: "PAGE",
@@ -51,15 +48,28 @@ export default function ToneCorrectionPage({ onClose }: { onClose: () => void })
       if (typeof response.data?.text !== "string" || !response.data.text.trim()) {
         throw new Error("교정 결과를 받지 못했습니다. 다시 시도해주세요.");
       }
-      if (mounted.current) {
-        setResult(response.data.text);
-        setNotice("교정 결과를 받았습니다.");
+      if (!mounted.current) return;
+      setLoading(false);
+      setInserting(true);
+      const insertion = await sendMessage({
+        src: "PAGE",
+        dst: "BACKGROUND",
+        method: "PUT",
+        path: "/editor/insert-text",
+        data: { text: response.data.text },
+      });
+      if (insertion?.statusCode !== 200) {
+        throw new Error(insertion?.data?.msg ?? "삽입하지 못했습니다. 메일 작성 창을 확인하고 다시 시도해주세요.");
       }
+      if (mounted.current) setNotice("교정 결과를 본문에 삽입했습니다.");
     } catch (error) {
       if (mounted.current) setNotice(error instanceof Error ? error.message : "톤 교정 요청에 실패했습니다.");
     } finally {
       pending.current = false;
-      if (mounted.current) setLoading(false);
+      if (mounted.current) {
+        setLoading(false);
+        setInserting(false);
+      }
     }
   }
 
@@ -96,18 +106,6 @@ export default function ToneCorrectionPage({ onClose }: { onClose: () => void })
           <label htmlFor="tone-text">메일 본문</label>
           <textarea id="tone-text" placeholder="메일 작성 창에 교정할 본문을 입력해주세요." value={text} readOnly />
         </div>
-        {result && (
-          <div className="tone-writing tone-result">
-            <label htmlFor="tone-result">교정 결과</label>
-            <textarea id="tone-result" value={result} readOnly />
-            <div className="tone-footer tone-insert-footer">
-              <InsertBodyButton text={result} disabled={loading}
-                onPendingChange={(value) => { pending.current = value; setInserting(value); if (value) setNotice(""); }}
-                onSuccess={() => setNotice("교정 결과를 본문에 삽입했습니다.")}
-                onError={setNotice} />
-            </div>
-          </div>
-        )}
         <p className="tone-notice" role="status">{loading ? "톤 교정 요청 중입니다. 잠시만 기다려주세요." : inserting ? "본문에 삽입 중입니다." : notice}</p>
         <div className="tone-footer">
           <button type="submit" disabled={loading || inserting}>

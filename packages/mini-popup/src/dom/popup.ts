@@ -37,6 +37,10 @@ export function createPopupDom(host: HTMLElement) {
     },
     focusOption(index: number) { options()[index]?.focus({ preventScroll: true }); },
     revealOption,
-    hide() { host.style.display = "none"; },
+    hide() {
+      host.inert = true;
+      host.dataset.open = "false";
+      host.style.display = "none";
+    },
   };
 }

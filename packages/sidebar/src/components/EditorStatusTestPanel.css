@@ -1,9 +1,9 @@
 .editor-test-panel {
-  margin-bottom: 28px;
-  padding: 16px;
-  border: 1px dashed #bdc4d0;
+  margin: 24px 0 0;
+  padding: 12px;
+  border: 1px solid #e5e5e5;
   border-radius: 12px;
-  background: #f8f9fb;
+  background: #fafafa;
   font-size: 13px;
 }
 .editor-test-panel summary { cursor: pointer; font-weight: 650; }

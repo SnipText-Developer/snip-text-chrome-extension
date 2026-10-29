@@ -47,25 +47,24 @@ test("sidebar requests tone correction and shows loading, success and retry stat
   assert.equal(document.querySelector('button[type="submit"]').disabled, true);
   assert.equal(document.querySelector("fieldset").disabled, true);
   await act(async () => resolveRequest({ statusCode: 200, data: { text: "(톤교정)작성한 본문" } }));
-  assert.equal(document.querySelector(".tone-spinner"), null);
-  assert.equal(document.querySelector("#tone-result").value, "(톤교정)작성한 본문");
-  assert.equal(document.querySelector('button[type="submit"]').disabled, false);
-  const insertButton = () => document.querySelector('.tone-insert-footer button');
-  await act(async () => { insertButton().click(); insertButton().click(); submit(); });
-  assert.equal(requests.length, 2, "Insertion suppresses duplicate insertion and correction requests");
+  assert.equal(document.querySelector("#tone-result"), null);
+  assert.equal(document.querySelector('button[type="submit"]').disabled, true);
+  assert.equal(document.querySelector('[role="status"]').textContent, "본문에 삽입 중입니다.");
+  await act(async () => { submit(); submit(); });
+  assert.equal(requests.length, 2, "Automatic insertion suppresses duplicate correction requests");
   assert.deepEqual(requests[1], {
     src: "PAGE", dst: "BACKGROUND", method: "PUT", path: "/editor/insert-text",
     data: { text: "(톤교정)작성한 본문" },
   });
-  assert.equal(insertButton().disabled, false, "Insertion keeps the button enabled visually");
-  assert.ok(document.querySelector('.tone-insert-footer .insert-body-spinner'));
   await act(async () => resolveRequest({ statusCode: 500, data: { msg: "작성 창 없음" } }));
   assert.equal(document.querySelector('[role="status"]').textContent, "작성 창 없음");
-  assert.equal(document.querySelector("#tone-result").value, "(톤교정)작성한 본문", "Failed insertion keeps the correction result");
-  await act(async () => insertButton().click());
+  assert.equal(document.querySelector('button[type="submit"]').disabled, false);
+  await act(async () => submit());
+  await act(async () => resolveRequest({ statusCode: 200, data: { text: "교정된 본문" } }));
+  assert.deepEqual(requests.at(-1).data, { text: "교정된 본문" });
   await act(async () => resolveRequest({ statusCode: 200, data: {} }));
   assert.equal(document.querySelector('[role="status"]').textContent, "교정 결과를 본문에 삽입했습니다.");
-  assert.equal(insertButton().disabled, false);
+  assert.equal(document.querySelector('button[type="submit"]').disabled, false);
   await act(async () => submit());
   await act(async () => resolveRequest({ statusCode: 500, data: { msg: "요청 실패" } }));
   assert.equal(document.querySelector('[role="status"]').textContent, "요청 실패");

@@ -2,6 +2,8 @@
 export function positionPopup(host: HTMLElement, popup: HTMLElement, bounds: DOMRect): void {
   const viewport = host.ownerDocument.defaultView;
   if (!viewport) return;
+  host.inert = false;
+  host.dataset.open = "true";
   host.style.display = "block";
   const { width, height } = popup.getBoundingClientRect();
   const left = Math.max(8, Math.min(bounds.left, viewport.innerWidth - width - 8));

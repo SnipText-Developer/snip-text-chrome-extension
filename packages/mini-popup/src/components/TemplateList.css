@@ -1,33 +1,23 @@
 #snip-text-mini-popup .list[role="listbox"] {
-  padding: 0.625rem;
-  scroll-padding-block: 0.625rem;
+  padding: 6px;
+  scroll-padding-block: 6px;
 }
-
-#snip-text-mini-popup .section-title {
-  margin: 0 0 0.625rem;
-  font-size: 0.75rem;
-  line-height: 1.5;
-  font-weight: 600;
-  color: #525252;
-}
-
 
 #snip-text-mini-popup button[role="option"] {
-  box-sizing: border-box;
   display: grid;
-  grid-template-columns: 3.5rem minmax(0, 1fr);
+  grid-template-columns: 64px minmax(0, 1fr);
   align-items: center;
-  gap: 0.5rem;
-  height: 2.25rem;
-  padding: 0 0.625rem;
-  border-radius: 0.625rem;
+  gap: 8px;
+  min-height: 34px;
+  padding: 7px 8px;
+  border-radius: 7px;
 }
 
 #snip-text-mini-popup .template-command {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.8125rem;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -36,23 +26,23 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #596375;
-  font-size: 0.75rem;
+  color: #666;
+  font-size: 14px;
 }
 
 #snip-text-mini-popup .message {
-  padding: 0.75rem;
-  color: #6b7280;
+  padding: 14px 8px;
+  text-align: center;
+  color: #737373;
+  font-size: 14px;
 }
 
 #snip-text-mini-popup button.reserved-command[role="option"] {
   grid-template-columns: max-content minmax(0, 1fr) max-content;
-  height: auto;
-  min-height: 36px;
-  padding: 8px 10px;
 }
 #snip-text-mini-popup .reserved-command .template-text {
+  margin-left: 6px;
+  font-size: 12px;
   white-space: normal;
-  overflow: visible;
   overflow-wrap: anywhere;
 }

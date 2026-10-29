@@ -380,6 +380,9 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
     document.body.dispatchEvent(new window.MouseEvent("pointerdown", { bubbles: true }));
   });
   assert.equal(host.style.display, "none", "Pointer interaction outside closes the popup");
+  assert.equal(host.dataset.open, "false");
+  assert.equal(host.inert, true, "Closing content cannot receive focus or clicks");
+  assert.ok(host.querySelector(".popup-group"), "Content remains mounted for the closing transition");
 
   await open();
   await act(async () => { key(editor, "Enter"); });
@@ -540,7 +543,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   await openTone();
   await act(async () => { key(document.activeElement, "ArrowUp"); });
   assert.equal(document.activeElement.textContent, "감성/에세이");
-  assert.equal(window.getComputedStyle(document.activeElement).backgroundColor, "rgb(217, 217, 217)", "Keyboard selection remains visibly highlighted in the tone menu");
+  assert.equal(window.getComputedStyle(document.activeElement).backgroundColor, "rgb(237, 237, 237)", "Keyboard selection remains visibly highlighted in the tone menu");
 
   assert.notEqual(host.style.display, "none");
   await act(async () => { key(document.activeElement, "ArrowDown"); });

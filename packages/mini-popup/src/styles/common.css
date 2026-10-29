@@ -1,10 +1,8 @@
-#snip-text-mini-popup button[aria-selected="true"] {
-  background: #d9d9d9;
-  border-radius: 0.625rem;
-}
+#snip-text-mini-popup button[aria-selected="true"] { background: #ededed; }
+#snip-text-mini-popup button:hover:not(:disabled) { background: #f5f5f5; }
+#snip-text-mini-popup button[aria-selected="true"]:hover { background: #e5e5e5; }
 
-#snip-text-mini-popup button:focus,
-#snip-text-mini-popup input:focus {
+#snip-text-mini-popup button:focus-visible {
   outline: none;
   box-shadow: none;
 }
@@ -12,8 +10,11 @@
 #snip-text-mini-popup .list {
   flex: 1;
   min-height: 0;
-  max-height: 9rem;
+  max-height: 184px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #ccc transparent;
 }
 
 #snip-text-mini-popup button {
@@ -24,6 +25,12 @@
   width: 100%;
   text-align: left;
   cursor: pointer;
-  padding: 0.5rem 0.75rem;
+  padding: 8px 12px;
   font: inherit;
+}
+#snip-text-mini-popup button:disabled { cursor: default; opacity: 0.55; }
+
+#snip-text-mini-popup input:focus-visible {
+  outline: 2px solid #737373;
+  outline-offset: -2px;
 }
