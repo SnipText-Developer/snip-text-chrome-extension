@@ -11,6 +11,6 @@ export function getTemplateVariables(text: string): string[] {
 export function getTemplateContent(content: string, values: Readonly<Record<string, string>>): string {
   return content.replace(variablePattern, (placeholder, field: string) => {
     const name = field.trim();
-    return Object.hasOwn(values, name) ? values[name] : placeholder;
+    return Object.hasOwn(values, name) && values[name].trim() ? values[name] : placeholder;
   });
 }

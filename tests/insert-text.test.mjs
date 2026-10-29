@@ -6,6 +6,30 @@ import { moduleUrl } from "./module-url.mjs";
 
 const { insertTextToEditor } = await import(moduleUrl("../src/content/controller/insert-text.ts"));
 const { encodeEditorText, normalizeEditorText } = await import(moduleUrl("../src/content/utils/editor-text.ts"));
+const { createEditorRouter } = await import(moduleUrl("../src/content/editor-router.ts"));
+
+test("content 라우터는 남아 있는 템플릿 변수를 400으로 거절하고 편집기를 변경하지 않음", async (t) => {
+  const { editor } = createEditor(t);
+  let editorReads = 0;
+  const route = createEditorRouter({
+    vendorName: "gmail",
+    getEditor: () => { editorReads += 1; return editor; },
+    getEditorStatus: () => ({ text: editor.textContent }),
+  });
+  const insert = (text) => route({
+    src: "BACKGROUND", dst: "CONTENT", method: "PUT", path: "/editor/insert-text", data: { text },
+  });
+  for (const text of ["{{}}", "안녕하세요 {{고객명}}님", "본문 {{  }}", "{{첫째\n둘째}}", "{{\u200b}}"] ) {
+    assert.deepEqual(await insert(text), {
+      statusCode: 400,
+      data: { msg: "템플릿의 변수를 모두 입력해 주세요." },
+    });
+    assert.equal(editor.innerHTML, "<b>기존 본문</b>");
+  }
+  assert.equal(editorReads, 0);
+  assert.equal((await insert("안녕하세요 홍길동님 {일반 괄호}")).statusCode, 200);
+  assertContent(editor, "안녕하세요 홍길동님 {일반 괄호}");
+});
 
 function createEditor(t) {
   const dom = new JSDOM('<!doctype html><div contenteditable="true" tabindex="0"><b>기존 본문</b></div>', { pretendToBeVisual: true });

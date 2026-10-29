@@ -30,17 +30,21 @@ export function createEditorRouter({
       }
 
       const text = normalizeEditorText(req.data.text);
-      if (!text) return { statusCode: 400, data: { msg: "Invalid data field" } };
+      if (!text)
+        return { statusCode: 400, data: { msg: "Invalid data field" } };
+      if (/\{\{[\s\S]*?\}\}/.test(text)) {
+        return {
+          statusCode: 400,
+          data: { msg: "템플릿의 변수를 모두 입력해 주세요." },
+        };
+      }
       const editor = getEditor();
-      const { prevText, isInserted } = insertTextToEditor(
-        editor,
-        text,
-      );
+      const { prevText, isInserted } = insertTextToEditor(editor, text);
 
       if (!isInserted) {
         return {
           statusCode: 404,
-          data: { msg: `${vendorName} editor not found.` },
+          data: { msg: `${vendorName} 에디터가 실행되지 않았습니다.` },
         };
       }
 

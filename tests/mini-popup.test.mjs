@@ -18,11 +18,23 @@ test("React content hook replaces repeated variables and preserves empty or miss
   }
   const text = "{{ 이름 }}님, {{금액}}원입니다. {{이름}}님";
   assert.deepEqual(getTemplateVariables(text), ["이름", "금액"]);
-  assert.equal(renderToStaticMarkup(createElement(Content, { text, values: { 이름: "민", 금액: "" } })), "<span>민님, 원입니다. 민님</span>");
+  assert.equal(renderToStaticMarkup(createElement(Content, { text, values: { 이름: "민", 금액: "" } })), "<span>민님, {{금액}}원입니다. 민님</span>");
   assert.equal(renderToStaticMarkup(createElement(Content, { text: "{{이름}}", values: {} })), "<span>{{이름}}</span>");
   assert.equal(renderToStaticMarkup(createElement(Content, { text: "{{toString}}", values: {} })), "<span>{{toString}}</span>");
   assert.equal(encodeEditorText(" a  b \r\n c"), "\u00a0a\u00a0\u00a0b\u00a0\n\u00a0c");
 });
+
+for (const path of ["../packages/mini-popup/src/utils/text.ts", "../packages/sidebar/src/common/template-content.ts"]) {
+  test(path + ": 미입력 변수는 원래 placeholder를 유지", async () => {
+    const { getTemplateContent } = await import(moduleUrl(path));
+    const content = "{{ 이름 }}님 {{금액}}원 {{}}";
+    for (const values of [{}, { 이름: "", 금액: "" }, { 이름: " \t", 금액: "\n" }]) {
+      assert.equal(getTemplateContent(content, values), content);
+    }
+    assert.equal(getTemplateContent(content, { 이름: "민", 금액: "" }), "민님 {{금액}}원 {{}}");
+    assert.equal(getTemplateContent(content, { 이름: " 민 ", 금액: "0" }), " 민 님 0원 {{}}");
+  });
+}
 
 test("React popup preserves selection, variables, IME, cancellation and stale-request handling", async (t) => {
   const dom = new JSDOM('<!doctype html><html><body><div id="editor" contenteditable="true" tabindex="0"></div></body></html>', { url: "https://mail.google.com/mail/u/0/", pretendToBeVisual: true });
@@ -276,7 +288,17 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   assert.ok(document.activeElement === amount);
   assert.ok(host.querySelector(".variable-entry"), "Moving focus between popup inputs keeps the form open");
   await act(async () => { host.querySelector("form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true })); });
-  assert.equal(inserted.at(-1), "민님 원");
+  assert.equal(delivered.at(-1).request.data.text, "민님 {{금액}}원");
+  assert.equal(host.querySelector('[role="status"]').textContent, "템플릿의 변수를 모두 입력해 주세요.");
+  assert.equal(inserted.length, 1, "Missing variables must not be inserted");
+  assert.equal(editor.textContent, "/");
+  await act(async () => {
+    const amountInput = host.querySelectorAll("input")[1];
+    amountInput.value = "100";
+    amountInput.dispatchEvent(new window.Event("input", { bubbles: true, composed: true }));
+  });
+  await act(async () => { host.querySelector("form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true })); });
+  assert.equal(inserted.at(-1), "민님 100원");
   await open();
   await act(async () => { key(editor, "ArrowDown"); key(editor, "Enter"); });
   let pageEscapes = 0;

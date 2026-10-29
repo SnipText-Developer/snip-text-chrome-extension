@@ -22,10 +22,6 @@ export default function TemplateInsertPage({ template, busy, editable, notice, o
   );
   const composing = useRef(false);
   const firstInput = useRef<HTMLInputElement>(null);
-  const previewValues = useMemo(() => Object.fromEntries(
-    Object.entries(values).filter(([, value]) => value !== ""),
-  ), [values]);
-  const preview = useMemo(() => getTemplateContent(template.content, previewValues), [template.content, previewValues]);
   const content = useMemo(() => getTemplateContent(template.content, values), [template.content, values]);
 
   useEffect(() => { firstInput.current?.focus(); }, []);
@@ -51,7 +47,7 @@ export default function TemplateInsertPage({ template, busy, editable, notice, o
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="m5 5 14 14M19 5 5 19" /></svg>
         </button>
       </div>
-      <p className="template-insert-preview" aria-label="삽입할 본문 미리보기">{preview}</p>
+      <p className="template-insert-preview" aria-label="삽입할 본문 미리보기">{content}</p>
       <form
         className="template-insert-form"
         onCompositionStart={() => { composing.current = true; }}

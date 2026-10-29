@@ -73,9 +73,9 @@ export function useMiniPopup(selector: string, getTemplates: StartPopupOptions["
           dismissed = true;
           close();
         }
-      } catch {
+      } catch (error) {
         if (!disposed && id === requestId) {
-          publish({ ...current, busy: false, error: "삽입하지 못했습니다. 다시 시도해주세요." });
+          publish({ ...current, busy: false, error: error instanceof Error ? error.message : "삽입하지 못했습니다. 다시 시도해주세요." });
         }
       }
     }

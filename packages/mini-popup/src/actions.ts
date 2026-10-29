@@ -19,7 +19,9 @@ export async function insertTemplate(text: string): Promise<void> {
     method: "PUT",
     data: { text },
   });
-  if (response?.statusCode !== 200) throw new Error("템플릿 삽입 실패");
+  if (response?.statusCode !== 200) {
+    throw new Error(response?.data?.msg ?? "삽입하지 못했습니다. 다시 시도해주세요.");
+  }
 }
 
 export async function getTemplates(): Promise<Template[]> {
