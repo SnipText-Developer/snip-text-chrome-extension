@@ -1,46 +1,49 @@
-const OPTION_SELECTOR = '[role="option"]';
-const LIST_SELECTOR = '[role="listbox"]';
+export function createPopupHost(doc: Document = document) {
+  const element = doc.createElement("div");
+  element.id = "snip-text-mini-popup";
+  doc.documentElement.append(element);
+  return { element, remove: () => element.remove() };
+}
 
 export function createPopupDom(host: HTMLElement) {
-  const options = () => Array.from(host.querySelectorAll<HTMLButtonElement>(OPTION_SELECTOR));
-
-  function revealOption(index: number): void {
-    const option = options()[index];
-    const list = option?.closest<HTMLElement>(LIST_SELECTOR);
-    if (!option || !list?.clientHeight) return;
-    // Include the list and wrapper padding at either end, not just the option.
-    if (index === 0) {
-      list.scrollTop = 0;
-      return;
-    }
-    if (index === list.querySelectorAll(OPTION_SELECTOR).length - 1) {
-      list.scrollTop = Math.max(0, list.scrollHeight - list.clientHeight);
-      return;
-    }
-    const style = host.ownerDocument.defaultView!.getComputedStyle(list);
-    const viewportTop = list.getBoundingClientRect().top + list.clientTop;
-    const top = viewportTop + (parseFloat(style.scrollPaddingTop) || 0);
-    const bottom = viewportTop + list.clientHeight - (parseFloat(style.scrollPaddingBottom) || 0);
-    const bounds = option.getBoundingClientRect();
-    if (bounds.top < top) list.scrollTop += bounds.top - top;
-    else if (bounds.bottom > bottom) list.scrollTop += bounds.bottom - bottom;
-  }
-
   return {
     contains(target: EventTarget | null): boolean {
       return target instanceof Node && host.contains(target);
     },
     hasFocus(): boolean { return host.contains(host.ownerDocument.activeElement); },
-    getOptionIndex(target: EventTarget | null): number {
-      const option = target instanceof Element ? target.closest(OPTION_SELECTOR) : null;
-      return options().findIndex((element) => element === option);
-    },
-    focusOption(index: number) { options()[index]?.focus({ preventScroll: true }); },
-    revealOption,
     hide() {
       host.inert = true;
       host.dataset.open = "false";
       host.style.display = "none";
     },
+  };
+}
+
+/** Layout measurement and writes are kept together to avoid partial positioning. */
+export function positionPopup(host: HTMLElement, popup: HTMLElement, bounds: DOMRect): void {
+  const viewport = host.ownerDocument.defaultView;
+  if (!viewport) return;
+  host.inert = false;
+  host.dataset.open = "true";
+  host.style.display = "block";
+  // Transitions scale the visual bounds; position using the layout size.
+  const width = popup.offsetWidth;
+  const left = Math.max(8, Math.min(bounds.left, viewport.innerWidth - width - 8));
+  const top = Math.max(8, bounds.bottom + 6);
+  host.style.setProperty("--genie-x", `${bounds.left - left}px`);
+  host.style.setProperty("--genie-y", `${bounds.bottom - top}px`);
+  host.style.setProperty("--popup-available-height", `${Math.max(0, viewport.innerHeight - top - 8)}px`);
+  host.style.left = `${left}px`;
+  host.style.top = `${top}px`;
+}
+
+export function observeViewport(host: HTMLElement, position: () => void): () => void {
+  const doc = host.ownerDocument;
+  const viewport = doc.defaultView;
+  viewport?.addEventListener("resize", position);
+  doc.addEventListener("scroll", position, true);
+  return () => {
+    viewport?.removeEventListener("resize", position);
+    doc.removeEventListener("scroll", position, true);
   };
 }

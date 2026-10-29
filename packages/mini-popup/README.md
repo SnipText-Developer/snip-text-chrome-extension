@@ -20,7 +20,9 @@ React 19와 React DOM 19는 일반 의존성으로 설치됩니다. 일반 DOM�
 
 DOM 접근의 단일 진입점은 `dom/index.ts`의 `createMiniPopupDom(selector, host)`입니다. `useMiniPopup`은 상태 전환과 요청 처리만 담당하고, DOM API를 통해 에디터·팝업·이벤트를 제어합니다. `usePopupPosition`은 React 생명주기와 위치 처리만 연결합니다. 선택 영역과 커서 상태는 DOM 계층 내부에서 관리합니다.
 
-DOM 계층은 `editor.ts`(편집기·Range·커서 복원), `popup.ts`(항목 탐색·포커스·스크롤·표시), `position.ts`(측정·좌표·viewport 구독), `events.ts`(이벤트 등록·해제·기본 동작 제어), `host.ts`(컨테이너 생성·제거)로 나눴습니다. 외부 코드는 `dom/index.ts`만 가져오며 DOM selector나 좌표 계산을 직접 작성하지 않습니다. 유지보수 규칙은 `src/dom/README.md`에 있습니다.
+DOM 계층은 `editor.ts`(편집기·Range·커서), `popup.ts`(컨테이너 생명주기·표시·위치), `controls.ts`(목록·변수 입력의 키보드·포커스·스크롤), `events.ts`(이벤트 구독·키 처리 연결·전파 차단)로 구성합니다. 외부 코드는 `dom/index.ts`만 가져오며 DOM selector나 좌표 계산을 직접 작성하지 않습니다. 유지보수 규칙은 `src/dom/README.md`에 있습니다.
+
+목록·변수 입력·문체 목록 컴포넌트가 표시될 때 자신의 DOM 처리 함수를 연결하고, 화면 전환·닫힘 시 해제합니다. 키 전파 차단용 capture 리스너는 유지하므로 목록 → 변수 입력 → 목록 전환 후에도 메일 페이지 단축키보다 먼저 처리합니다.
 
 확장 프로그램에서는 mini-popup의 `src/actions.ts`가 background의 `/editor/insert-text`에 텍스트만 요청합니다. background는 요청을 보낸 탭·프레임으로 전달합니다. content 라우터의 기존 요청 규격을 유지하며, mini-popup과 sidebar 모두 본문 전체를 교체합니다. 공백·개행 인코딩은 content 삽입 함수가 `encodeEditorText`를 호출해 한 번만 적용합니다.
 
@@ -46,3 +48,5 @@ DOM 계층은 `editor.ts`(편집기·Range·커서 복원), `popup.ts`(항목 �
 `GET /editor/text`는 BACKGROUND에 저장된 observer 상태를 직접 응답합니다. CONTENT 왕복 조회는 하지 않으며, 변경 비교는 observer가 갱신한 본문을 기준으로 합니다.
 
 확장 프로그램에서는 `startPopup({ selector, vendorName, getEditorStatus })`로 시작합니다. `startPopup`이 패키지 내부에서 템플릿 조회·삽입·본문 조회·톤 교정 액션을 구성합니다. content는 vendorName과 observer의 현재 상태 조회만 전달합니다. 메시지 전송은 `src/common/`에 복사한 message-bus·wrapper·메시지 타입을 사용하며, 기존 액션 콜백 주입 방식도 지원합니다.
+
+팝업은 항상 커서 아래에 표시하며, 남은 화면 높이에 맞춰 내부 목록을 스크롤합니다. 전환은 `MiniPopup.css`에서 진행도를 보간하고 `sin()`·`cos()`로 반원 경로를 계산합니다. 입력 위치를 기준으로 0.5초 동안 확대·축소하고 약한 X·Y축 회전을 더합니다. 전환 중간에는 비대칭 곡선 마스크와 가로·세로 비율, 기울기를 함께 바꿔 형태가 유연하게 일그러지며, 완전히 열리면 기존 모양으로 돌아옵니다. 닫힐 때도 전환이 끝까지 보이도록 마지막 내용을 유지하며, 닫힌 항목은 `inert`로 포커스와 클릭을 차단합니다. `prefers-reduced-motion: reduce`에서는 즉시 표시·숨깁니다.

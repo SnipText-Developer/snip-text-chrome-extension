@@ -1,28 +1,37 @@
 import styles from "./TemplateVariablesForm.css?inline";
-import { useRef, useState } from "react";
-import { preventDefault } from "../dom/index";
+import { useLayoutEffect, useRef, useState } from "react";
+import { preventDefault, type MiniPopupDom } from "../dom/index";
 import type { Template } from "../types";
 import { useTemplateContent } from "../hooks/useTemplateContent";
 
 interface Props {
+  dom: MiniPopupDom;
+  enabled: boolean;
   template: Template;
   busy?: boolean;
   onCancel: () => void;
   onInsert: (text: string) => void;
 }
 
-export function TemplateVariablesForm({ template, busy, onCancel, onInsert }: Props) {
+export function TemplateVariablesForm({ dom, enabled, template, busy, onCancel, onInsert }: Props) {
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(template.variables.map((name) => [name, ""])),
   );
   const content = useTemplateContent(template.content, values);
   const composing = useRef(false);
+  const root = useRef<HTMLFormElement>(null);
+  const handlers = useRef({ busy, onCancel });
+  handlers.current = { busy, onCancel };
+  useLayoutEffect(() => {
+    if (enabled && root.current) return dom.connectTemplateInput(root.current, () => handlers.current);
+  }, [dom, enabled]);
 
   return (
     <>
       <style>{styles}</style>
       <div className="list variables">
         <form
+          ref={root}
           onCompositionStart={() => { composing.current = true; }}
           onCompositionEnd={() => { composing.current = false; }}
           onSubmit={(event) => {
@@ -32,11 +41,10 @@ export function TemplateVariablesForm({ template, busy, onCancel, onInsert }: Pr
           }}>
           <section aria-label="변수 입력">
             <div className="fields">
-              {template.variables.map((variable, index) => (
+              {template.variables.map((variable) => (
                 <label key={variable}>
                   <span>{variable}</span>
                   <input
-                    autoFocus={index === 0}
                     type="text"
                     disabled={busy}
                     placeholder={`${variable} 입력`}

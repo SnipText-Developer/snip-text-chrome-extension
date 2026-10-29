@@ -73,7 +73,10 @@ export function createEditorDom(selector: string, doc: Document) {
     isInsertionValid(): boolean { return isValidAnchor(anchor); },
     getBounds(): DOMRect | null {
       if (!anchor?.editor.isConnected) return null;
-      const rect = anchor.trigger.getBoundingClientRect();
+      // The trigger starts at the slash; the animation must meet its caret end.
+      const caret = anchor.trigger.cloneRange();
+      caret.collapse(false);
+      const rect = caret.getBoundingClientRect();
       return rect.height ? rect : anchor.editor.getBoundingClientRect();
     },
   };

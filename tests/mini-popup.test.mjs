@@ -346,6 +346,31 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
     assert.equal(mailArrowCalls, 0, "Consumed navigation must not reach other window capture handlers");
     assert.equal(document.activeElement === host.querySelector('[role="option"]'), true);
     assert.equal(inserted.length, 2, "ArrowUp must not insert a template");
+    for (let cycle = 0; cycle < 3; cycle++) {
+      await act(async () => host.querySelectorAll('[role="option"]')[1].click());
+      assert.ok(document.activeElement === host.querySelector("input"), "Input screen focuses its first field");
+      for (const value of ["a", "ArrowUp", "ArrowDown", "Tab"]) {
+        const event = new window.KeyboardEvent("keydown", { key: value, bubbles: true, cancelable: true });
+        await act(async () => host.querySelector("input").dispatchEvent(event));
+        assert.equal(event.defaultPrevented, false, `Input keeps native ${value} behavior after screen changes`);
+      }
+      await act(async () => {
+        host.querySelector("input").dispatchEvent(new window.CompositionEvent("compositionstart", { bubbles: true }));
+        key(host.querySelector("input"), "Escape");
+      });
+      assert.ok(host.querySelector(".variable-entry"), "IME Escape must not leave the input screen");
+      await act(async () => {
+        if (cycle % 2) host.querySelector('button[type="button"]').click();
+        else {
+          host.querySelector("input").dispatchEvent(new window.CompositionEvent("compositionend", { bubbles: true }));
+          key(host.querySelector("input"), "Escape");
+        }
+      });
+      assert.ok(document.activeElement === host.querySelectorAll('[role="option"]')[1], "Cancel restores the selected option");
+      await act(async () => { key(document.activeElement, "ArrowUp"); });
+      assert.ok(document.activeElement === host.querySelector('[role="option"]'), "Restored list handles ArrowUp");
+      assert.equal(mailArrowCalls, 0, "Each screen retains capture priority over mail shortcuts");
+    }
   } finally {
     window.removeEventListener("keydown", mailWindowKeyHandler, true);
   }
@@ -382,7 +407,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   assert.equal(host.style.display, "none", "Pointer interaction outside closes the popup");
   assert.equal(host.dataset.open, "false");
   assert.equal(host.inert, true, "Closing content cannot receive focus or clicks");
-  assert.ok(host.querySelector(".popup-group"), "Content remains mounted for the closing transition");
+  assert.ok(host.querySelector(".popup-group"), "Content remains mounted for the CSS closing transition");
 
   await open();
   await act(async () => { key(editor, "Enter"); });
@@ -432,7 +457,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   assert.equal(window.getSelection().getRangeAt(0).endOffset, multilineEditor.childNodes.length);
   multilineEditor.remove();
 
-  const { createPopupDom } = await import(moduleUrl("../packages/mini-popup/src/dom/popup.ts"));
+  const { createOptionListDom } = await import(moduleUrl("../packages/mini-popup/src/dom/controls.ts"));
   const scrollFixture = document.createElement("div");
   scrollFixture.innerHTML = '<div role="listbox" style="scroll-padding-top: 10px; scroll-padding-bottom: 12px"><button role="option"></button><button role="option"></button><button role="option"></button></div>';
   document.body.append(scrollFixture);
@@ -441,13 +466,13 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   Object.defineProperty(paddedList, "clientHeight", { value: 100 });
   paddedList.getBoundingClientRect = () => ({ top: 100, bottom: 200 });
   middleOption.getBoundingClientRect = () => ({ top: 180, bottom: 210 });
-  createPopupDom(scrollFixture).revealOption(1);
+  createOptionListDom(paddedList).revealOption(1);
   assert.equal(paddedList.scrollTop, 22, "Middle options leave the configured bottom spacing");
   middleOption.getBoundingClientRect = () => ({ top: 95, bottom: 125 });
-  createPopupDom(scrollFixture).revealOption(1);
+  createOptionListDom(paddedList).revealOption(1);
   assert.equal(paddedList.scrollTop, 7, "Middle options leave the configured top spacing");
   middleOption.getBoundingClientRect = () => ({ top: 115, bottom: 150 });
-  createPopupDom(scrollFixture).revealOption(1);
+  createOptionListDom(paddedList).revealOption(1);
   assert.equal(paddedList.scrollTop, 7, "Visible options with sufficient spacing do not scroll");
   scrollFixture.remove();
 
@@ -601,12 +626,16 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
     await editCommand(prefix + "/톤교");
     assert.match(host.querySelector('[role="option"]').textContent, /톤교정/);
     await editCommand(prefix + "/톤ㅇ");
-    assert.equal(host.querySelector('.reserved-command'), null, "An invalid tone prefix must remove the reserved command");
+    if (host.dataset.open === "true") {
+      assert.equal(host.querySelector('.reserved-command'), null, "An invalid tone prefix must remove the reserved command");
+    } else {
+      assert.equal(host.inert, true, "Closing content cannot activate the previous command");
+    }
     assert.equal(host.querySelector('.tone-menu'), null);
   }
   await openTone();
   await editCommand("작성한 본문/톤ㅇ");
-  assert.equal(host.querySelector('.tone-menu'), null, "Editing the command also leaves the tone submenu");
+  assert.equal(host.dataset.open, "false", "Editing the command closes the tone submenu");
   assert.equal(host.style.display, "none");
 
   failLoad = true;

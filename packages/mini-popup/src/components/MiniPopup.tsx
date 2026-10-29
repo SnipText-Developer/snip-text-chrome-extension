@@ -20,14 +20,13 @@ interface Props extends StartPopupOptions {
 export function MiniPopup({ selector, getTemplates, insertText, correctTone, getEditorText, host }: Props) {
   const popup = useRef<HTMLDivElement>(null);
   const state = useMiniPopup(selector, getTemplates, insertText, host, correctTone, getEditorText);
-  // Keep the last content mounted so the host can finish its closing transition.
+  // Retain the last content while CSS transitions display to none.
   const [lastOpenState, setLastOpenState] = useState<typeof state | null>(null);
-  if (state.open && lastOpenState !== state) setLastOpenState(state);
+  useLayoutEffect(() => {
+    if (state.open) setLastOpenState(state);
+  }, [state]);
   const view = state.open ? state : lastOpenState;
   usePopupPosition(state.dom, popup, state.open);
-  useLayoutEffect(() => {
-    if (state.choosingTone) state.dom.popup.focusOption(0);
-  }, [state.choosingTone, state.dom]);
   const selected = view?.selectedTemplate;
 
   return (
@@ -49,6 +48,8 @@ export function MiniPopup({ selector, getTemplates, insertText, correctTone, get
           <header hidden={view.choosingTone}>{selected ? `${selected.shortcut} 변수 입력` : "템플릿"}</header>
           {selected ? (
             <TemplateVariablesForm
+              dom={state.dom}
+              enabled={state.open}
               key={selected.templateId}
               template={selected}
               busy={state.open && view.busy}
@@ -56,8 +57,8 @@ export function MiniPopup({ selector, getTemplates, insertText, correctTone, get
               onInsert={view.onInsert}
             />
           ) : view.choosingTone ? (
-            <ToneMenu options={view.templates} active={view.active} busy={state.open && view.busy} onChoose={view.onChoose} onActiveChange={view.onActiveChange} />
-          ) : <TemplateList {...view} />}
+            <ToneMenu dom={state.dom} enabled={state.open} options={view.templates} active={view.active} busy={state.open && view.busy} onChoose={view.onChoose} onActiveChange={view.onActiveChange} />
+          ) : <TemplateList {...view} dom={state.dom} enabled={state.open} busy={state.open && view.busy} />}
           {view.error && <p className="popup-notice" role="status">{view.error}</p>}
           <footer hidden={!selected} className={selected ? "variables-footer" : undefined}>
             {selected ? "변수 입력 후 삽입 · Esc 취소" : null}

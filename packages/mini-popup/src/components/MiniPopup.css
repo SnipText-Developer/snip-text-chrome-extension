@@ -1,28 +1,68 @@
+@property --snip-lamp-progress {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
 #snip-text-mini-popup {
   position: fixed;
   z-index: 2147483647;
   display: none;
+  --snip-lamp-progress: 0;
+  --lamp-angle: calc(180deg * (1 - var(--snip-lamp-progress)));
+  --lamp-bend: sin(var(--lamp-angle));
   opacity: 0;
-  translate: 0 4px;
-  transition: opacity 140ms ease-out, translate 140ms ease-out, display 140ms allow-discrete;
+  transform-origin: var(--genie-x, 0px) var(--genie-y, -6px);
+  /* Sample a semicircle instead of interpolating a diagonal translation.
+     Scaling the local path keeps its collapsed endpoint at the cursor. */
+  transform: perspective(900px)
+    scale(
+      calc(var(--snip-lamp-progress) * (1 - 0.18 * var(--lamp-bend))),
+      calc(var(--snip-lamp-progress) * (1 + 0.08 * var(--lamp-bend)))
+    )
+    translate(calc(28px * (1 - cos(var(--lamp-angle)))), calc(28px * sin(var(--lamp-angle))))
+    rotateX(calc(5deg * (1 - var(--snip-lamp-progress))))
+    rotateY(calc(2deg * (1 - var(--snip-lamp-progress))))
+    skewX(calc(8deg * var(--lamp-bend)));
+  /* Curved, asymmetric edges peak mid-transition and relax at both ends.
+     The expanded inset leaves room for the normal popup shadow. */
+  clip-path: inset(calc(-48px * (1 - var(--lamp-bend))) round
+    calc(24% * var(--lamp-bend)) calc(70% * var(--lamp-bend))
+    calc(12% * var(--lamp-bend)) calc(48% * var(--lamp-bend)) /
+    calc(56% * var(--lamp-bend)) calc(18% * var(--lamp-bend))
+    calc(68% * var(--lamp-bend)) calc(40% * var(--lamp-bend)));
+  transition: --snip-lamp-progress 0.5s cubic-bezier(0.25, 1, 0.5, 1),
+    opacity 0.5s ease, display 0.5s allow-discrete;
 }
 
 #snip-text-mini-popup[data-open="true"] {
+  --snip-lamp-progress: 1;
   opacity: 1;
-  translate: 0 0;
+  transition-duration: 0.3s;
+  /* Release the 3D surface after motion so text uses its original rendering. */
+  animation: snip-lamp-settle 0s 0.3s forwards;
+}
+
+@keyframes snip-lamp-settle {
+  to { transform: none; clip-path: none; }
 }
 
 #snip-text-mini-popup[data-open="false"] { pointer-events: none; }
 
 @starting-style {
   #snip-text-mini-popup[data-open="true"] {
+    --snip-lamp-progress: 0;
     opacity: 0;
-    translate: 0 4px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #snip-text-mini-popup { transition: none; translate: none; }
+  #snip-text-mini-popup {
+    transition: none;
+    animation: none;
+    transform: none;
+    clip-path: none;
+  }
 }
 
 #snip-text-mini-popup .popup {
@@ -30,7 +70,7 @@
   flex-direction: column;
   width: 260px;
   max-width: calc(100vw - 16px);
-  max-height: calc(100vh - 16px);
+  max-height: var(--popup-available-height, calc(100vh - 16px));
   background: #fff;
   color: #202020;
   border: 1px solid #ededed;

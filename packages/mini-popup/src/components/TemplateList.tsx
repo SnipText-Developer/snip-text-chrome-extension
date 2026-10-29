@@ -1,8 +1,13 @@
+import { useLayoutEffect, useRef } from "react";
+import type { MiniPopupDom } from "../dom/index";
 import styles from "./TemplateList.css?inline";
 import { toneCommand } from "../commands";
 import type { Template } from "../types";
 
 interface Props {
+  dom: MiniPopupDom;
+  enabled: boolean;
+  busy?: boolean;
   templates: Template[];
   active: number;
   autoFocus?: boolean;
@@ -12,6 +17,7 @@ interface Props {
 }
 
 export function TemplateList({
+  dom, enabled, busy,
   templates,
   active,
   autoFocus,
@@ -19,10 +25,16 @@ export function TemplateList({
   onChoose,
   onActiveChange,
 }: Props) {
+  const root = useRef<HTMLDivElement>(null);
+  const handlers = useRef({ active, autoFocus, busy, onActiveChange, onChoose: (index: number) => onChoose(templates[index]) });
+  handlers.current = { active, autoFocus, busy, onActiveChange, onChoose: (index) => onChoose(templates[index]) };
+  useLayoutEffect(() => {
+    if (enabled && root.current) return dom.connectTemplateList(root.current, () => handlers.current);
+  }, [dom, enabled]);
   return (
     <>
       <style>{styles}</style>
-      <div className="list" role="listbox" aria-label="템플릿">
+      <div ref={root} className="list" role="listbox" aria-label="템플릿">
         {message || !templates.length ? (
           <div className="message">{message ?? "검색 결과가 없습니다."}</div>
         ) : (
@@ -31,7 +43,6 @@ export function TemplateList({
               key={template.templateId}
               type="button"
               className={template.templateId === toneCommand.templateId ? "reserved-command" : undefined}
-              autoFocus={autoFocus && index === active}
               role="option"
               aria-selected={index === active}
               aria-label={`${template.shortcut} ${template.title}`}

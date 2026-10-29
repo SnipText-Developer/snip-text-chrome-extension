@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toneCommand, toneOptions } from "../commands";
 import type { StartPopupOptions, Template } from "../types";
-import { createMiniPopupDom, preventDefault } from "../dom/index";
+import { createMiniPopupDom } from "../dom/index";
 
 interface ListState {
   phase: "list" | "tones";
@@ -115,10 +115,11 @@ export function useMiniPopup(selector: string, getTemplates: StartPopupOptions["
         return;
       }
       if (!template.variables.length) return insert(template.content);
-      publish({ phase: "variables", template, list: current });
+      const selectedIndex = current.templates.findIndex((item) => item.templateId === template.templateId);
+      publish({ phase: "variables", template, list: { ...current, active: selectedIndex >= 0 ? selectedIndex : current.active } });
     }
     function select(index: number) {
-      if ((current.phase === "list" || current.phase === "tones") && index >= 0 && index < current.templates.length) {
+      if ((current.phase === "list" || current.phase === "tones") && index >= 0 && index < current.templates.length && index !== current.active) {
         publish({ ...current, active: index });
       }
     }
@@ -178,36 +179,6 @@ export function useMiniPopup(selector: string, getTemplates: StartPopupOptions["
       composing = false;
       onInput(event);
     }
-    function onKeyDown(event: KeyboardEvent) {
-      if (current.phase === "closed" || current.busy) return;
-      const inPopup = popup.contains(event.target);
-      if (!inPopup && !dom.isEditorEvent(event)) return;
-      if (event.isComposing || (!inPopup && composing)) return;
-      if (event.key === "Escape") {
-        preventDefault(event);
-        cancel();
-        return true;
-      }
-      // Focused buttons keep native activation; only list arrows are shared.
-      if ((current.phase !== "list" && current.phase !== "tones") || !current.templates.length) return;
-      if ((!inPopup || current.phase === "tones") && event.key === "Enter" && !event.shiftKey) {
-        preventDefault(event);
-        const focusedIndex = inPopup ? popup.getOptionIndex(event.target) : -1;
-        const index = focusedIndex >= 0 ? focusedIndex : current.active;
-        if (!event.repeat) choose(current.templates[index]);
-        return true;
-      } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-        const focusedIndex = inPopup ? popup.getOptionIndex(event.target) : -1;
-        const index = focusedIndex >= 0 ? focusedIndex : current.active;
-        preventDefault(event);
-        const step = event.key === "ArrowDown" ? 1 : -1;
-        const next = (index + step + current.templates.length) % current.templates.length;
-        select(next);
-        if (inPopup || current.phase === "tones") popup.focusOption(next);
-        popup.revealOption(next);
-        return true;
-      }
-    }
     function onPointerDown(event: PointerEvent) {
       if (current.phase === "closed" || popup.contains(event.target)) return;
       dismissed = true;
@@ -223,7 +194,6 @@ export function useMiniPopup(selector: string, getTemplates: StartPopupOptions["
           selectionchange: () => { void refresh(); },
           compositionstart: onCompositionStart,
           compositionend: onCompositionEnd,
-          keydown: onKeyDown,
           pointerdown: onPointerDown,
         });
         return () => {
