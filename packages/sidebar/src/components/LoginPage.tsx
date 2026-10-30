@@ -1,9 +1,9 @@
+import { useNotification } from "../context/NotificationProvider";
 import { vendors, type Vendor } from "../config/vendors";
-import { useState } from "react";
 import "./LoginPage.css";
 
 export default function LoginPage() {
-  const [notice, setNotice] = useState("");
+  const setNotice = useNotification();
 
   function startLogin(vendor: Vendor) {
     setNotice(`${vendor.name} 로그인은 현재 연동 준비 중입니다.`);
@@ -33,9 +33,7 @@ export default function LoginPage() {
         <p className="login-terms">
           회원가입 시 SnipText의 이용약관과 개인정보처리방침에 동의하게 됩니다.
         </p>
-        <p className="login-notice" role="status" aria-live="polite">
-          {notice}
-        </p>
+
       </div>
     </main>
   );

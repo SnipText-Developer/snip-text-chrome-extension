@@ -1,3 +1,4 @@
+import { useNotification } from "../context/NotificationProvider";
 import { useContext, useEffect, useRef, useState, type FormEvent } from "react";
 import { EditorStatusContext } from "../context/editorStatusContext";
 import { sendMessage } from "../common/message-bus";
@@ -9,7 +10,7 @@ export default function ToneCorrectionPage({ onClose }: { onClose: () => void })
   const [tone, setTone] = useState<string | null>(null);
   const editor = useContext(EditorStatusContext)?.latestStatus;
   const text = editor?.text ?? "";
-  const [notice, setNotice] = useState("");
+  const setNotice = useNotification();
   const [loading, setLoading] = useState(false);
   const [inserting, setInserting] = useState(false);
   const pending = useRef(false);
@@ -106,7 +107,7 @@ export default function ToneCorrectionPage({ onClose }: { onClose: () => void })
           <label htmlFor="tone-text">메일 본문</label>
           <textarea id="tone-text" placeholder="메일 작성 창에 교정할 본문을 입력해주세요." value={text} readOnly />
         </div>
-        <p className="tone-notice" role="status">{loading ? "톤 교정 요청 중입니다. 잠시만 기다려주세요." : inserting ? "본문에 삽입 중입니다." : notice}</p>
+        <p className="tone-progress" role="status">{loading ? "톤 교정 요청 중입니다. 잠시만 기다려주세요." : inserting ? "본문에 삽입 중입니다." : ""}</p>
         <div className="tone-footer">
           <button type="submit" disabled={loading || inserting}>
             {loading && <span className="tone-spinner" aria-hidden="true" />}

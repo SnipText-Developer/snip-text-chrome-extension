@@ -1,3 +1,4 @@
+import { useNotification } from "../context/NotificationProvider";
 import { getTemplateVariables } from "../common/template-content";
 import TemplateInsertPage from "./TemplateInsertPage";
 import InsertBodyButton from "./InsertBodyButton";
@@ -8,7 +9,11 @@ import TemplateEmptyState from "./TemplateEmptyState";
 import { EditorStatusContext } from "../context/editorStatusContext";
 import type { Template } from "../core/data-types";
 
-function TemplateListPage({ onOpenToneCorrection }: { onOpenToneCorrection: () => void }) {
+function TemplateListPage({
+  onOpenToneCorrection,
+}: {
+  onOpenToneCorrection: () => void;
+}) {
   const editorState = useContext(EditorStatusContext);
   const isEditorEditable = Object.values(editorState?.statuses ?? {}).some(
     (status) => status?.isEditable === true,
@@ -16,7 +21,7 @@ function TemplateListPage({ onOpenToneCorrection }: { onOpenToneCorrection: () =
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [notice, setNotice] = useState("");
+  const setNotice = useNotification();
   const [inserting, setInserting] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
     null,
@@ -70,16 +75,21 @@ function TemplateListPage({ onOpenToneCorrection }: { onOpenToneCorrection: () =
       if (url.protocol !== "https:" && url.protocol !== "http:") {
         throw new Error("지원하지 않는 URL입니다.");
       }
-      window.location.assign(url.href);
+      window.open(url.href, "_blank", "noopener,noreferrer");
     } catch {
       setNotice(`${label} URL을 올바른 HTTP 또는 HTTPS 주소로 설정해주세요.`);
     }
   }
 
   async function copy(item: Template) {
+    if (getTemplateVariables(item.content).length) {
+      setNotice("");
+      setSelectedTemplate(item);
+      return;
+    }
     try {
       await navigator.clipboard.writeText(item.content);
-      setNotice("복사했습니다.");
+      setNotice(`‘${item.title}’ 내용을 복사했어요.`);
     } catch {
       setNotice("복사하지 못했습니다. 텍스트를 직접 선택해 복사해주세요.");
     }
@@ -98,13 +108,15 @@ function TemplateListPage({ onOpenToneCorrection }: { onOpenToneCorrection: () =
         template={selectedTemplate}
         busy={inserting}
         editable={isEditorEditable}
-        notice={notice}
         onClose={() => {
           setSelectedTemplate(null);
           setNotice("");
         }}
         onPendingChange={setInserting}
-        onSuccess={() => setSelectedTemplate(null)}
+        onSuccess={() => {
+          setSelectedTemplate(null);
+          setNotice("본문에 삽입했습니다.");
+        }}
         onError={setNotice}
       />
     );
@@ -149,7 +161,7 @@ function TemplateListPage({ onOpenToneCorrection }: { onOpenToneCorrection: () =
             disabled={!pageConfig.newTemplateUrl.trim()}
             title={
               pageConfig.newTemplateUrl.trim()
-                ? "새 템플릿 페이지로 이동"
+                ? "새 템플릿 페이지를 새 탭에서 열기"
                 : "config.ts에서 새 템플릿 URL을 설정해주세요."
             }
             onClick={() =>
@@ -174,12 +186,32 @@ function TemplateListPage({ onOpenToneCorrection }: { onOpenToneCorrection: () =
                 <div className="card-actions">
                   <button onClick={() => void copy(item)}>복사</button>
                   {getTemplateVariables(item.content).length ? (
-                    <button disabled={inserting || !isEditorEditable} onClick={() => { setNotice(""); setSelectedTemplate(item); }}>메일 본문에 삽입</button>
+                    <button
+                      disabled={inserting || !isEditorEditable}
+                      onClick={() => {
+                        setNotice("");
+                        setSelectedTemplate(item);
+                      }}>
+                      메일 본문에 삽입
+                    </button>
                   ) : (
-                    <InsertBodyButton text={item.content} label="메일 본문에 삽입" disabled={!isEditorEditable} beforeInsert={() => !inserting}
-                      title={isEditorEditable ? "메일 본문에 삽입" : "메일 작성 창을 열어주세요."}
-                      onPendingChange={(value) => { setInserting(value); if (value) setNotice(""); }}
-                      onSuccess={() => setNotice("본문에 삽입했습니다.")} onError={setNotice} />
+                    <InsertBodyButton
+                      text={item.content}
+                      label="메일 본문에 삽입"
+                      disabled={!isEditorEditable}
+                      beforeInsert={() => !inserting}
+                      title={
+                        isEditorEditable
+                          ? "메일 본문에 삽입"
+                          : "메일 작성 창을 열어주세요."
+                      }
+                      onPendingChange={(value) => {
+                        setInserting(value);
+                        if (value) setNotice("");
+                      }}
+                      onSuccess={() => setNotice("본문에 삽입했습니다.")}
+                      onError={setNotice}
+                    />
                   )}
                 </div>
               </article>
@@ -187,9 +219,6 @@ function TemplateListPage({ onOpenToneCorrection }: { onOpenToneCorrection: () =
           )}
         </div>
       </section>
-      <p className="notice" role="status" aria-live="polite">
-        {notice}
-      </p>
     </>
   );
 }

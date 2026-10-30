@@ -1,4 +1,4 @@
 export const pageConfig = {
   // Set the full HTTP(S) URL of the new-template page.
-  newTemplateUrl: "",
+  newTemplateUrl: "https://example.com",
 };

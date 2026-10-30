@@ -1,3 +1,4 @@
+import { NotificationProvider } from "./context/NotificationProvider";
 // import LoginPage from "./components/LoginPage";
 import EditorStatusTestPanel from "./components/EditorStatusTestPanel";
 import TemplateListPage from "./components/TemplateListPage";
@@ -22,6 +23,7 @@ function App() {
   // if (!showTemplates) return <LoginPage />;
 
   return (
+    <NotificationProvider>
     <EditorStatusProvider>
       <main className="sidebar">
         <header className="profile-header">
@@ -73,6 +75,7 @@ function App() {
         )}
       </main>
     </EditorStatusProvider>
+    </NotificationProvider>
   );
 }
 

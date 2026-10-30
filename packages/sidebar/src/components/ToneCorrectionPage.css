@@ -54,8 +54,8 @@
 .tone-writing { display: flex; flex: 1; flex-direction: column; gap: 10px; margin-top: 24px; }
 .tone-writing textarea { flex: 1; width: 100%; min-height: 180px; padding: 12px; resize: vertical; border: 1px solid #e0e0e0; border-radius: 10px; background: #fff; color: #202020; font-size: 14px; line-height: 1.65; }
 .tone-writing textarea::placeholder { color: #808080; }
-.tone-notice { color: #666; font-size: 12px; }
-.tone-notice:not(:empty) { margin-top: 10px; }
+.tone-progress { color: #666; font-size: 12px; }
+.tone-progress:not(:empty) { margin-top: 10px; }
 .tone-footer { display: flex; justify-content: flex-end; margin-top: 20px; }
 .tone-footer button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 22px; border-radius: 8px; background: #000; color: #fff; font-size: 13px; font-weight: 700; }
 .tone-footer button:disabled { opacity: 0.5; }
