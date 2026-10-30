@@ -1,9 +1,7 @@
-import { useNotification } from "../context/NotificationProvider";
 import { vendors, type Vendor } from "../config/vendors";
 import "./LoginPage.css";
 
-export default function LoginPage() {
-  const setNotice = useNotification();
+export default function LoginPage({ onNotify: setNotice }: { onNotify: (message: string) => void }) {
 
   function startLogin(vendor: Vendor) {
     setNotice(`${vendor.name} 로그인은 현재 연동 준비 중입니다.`);

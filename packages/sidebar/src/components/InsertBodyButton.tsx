@@ -1,9 +1,9 @@
-import { useNotification } from "../context/NotificationProvider";
 import { useEffect, useRef, useState } from "react";
 import { sendMessage } from "../common/message-bus";
 import "./InsertBodyButton.css";
 
 interface Props {
+  onNotify: (message: string) => void;
   text: string;
   disabled?: boolean;
   type?: "button" | "submit";
@@ -17,6 +17,7 @@ interface Props {
 
 export default function InsertBodyButton({
   text,
+  onNotify: setNotice,
   disabled = false,
   type = "button",
   label = "본문에 삽입",
@@ -27,7 +28,6 @@ export default function InsertBodyButton({
   onError,
 }: Props) {
   const [loading, setLoading] = useState(false);
-  const setNotice = useNotification();
   const pending = useRef(false);
   const mounted = useRef(true);
   useEffect(() => {

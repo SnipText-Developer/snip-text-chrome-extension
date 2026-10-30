@@ -1,4 +1,3 @@
-import { useNotification } from "../context/NotificationProvider";
 import { getTemplateVariables } from "../common/template-content";
 import TemplateInsertPage from "./TemplateInsertPage";
 import InsertBodyButton from "./InsertBodyButton";
@@ -11,8 +10,10 @@ import type { Template } from "../core/data-types";
 
 function TemplateListPage({
   onOpenToneCorrection,
+  onNotify: setNotice,
 }: {
   onOpenToneCorrection: () => void;
+  onNotify: (message: string) => void;
 }) {
   const editorState = useContext(EditorStatusContext);
   const isEditorEditable = Object.values(editorState?.statuses ?? {}).some(
@@ -21,7 +22,6 @@ function TemplateListPage({
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const setNotice = useNotification();
   const [inserting, setInserting] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
     null,
@@ -104,6 +104,7 @@ function TemplateListPage({
   if (selectedTemplate) {
     return (
       <TemplateInsertPage
+        onNotify={setNotice}
         key={selectedTemplate.templateId}
         template={selectedTemplate}
         busy={inserting}
@@ -196,6 +197,7 @@ function TemplateListPage({
                     </button>
                   ) : (
                     <InsertBodyButton
+                      onNotify={setNotice}
                       text={item.content}
                       label="메일 본문에 삽입"
                       disabled={!isEditorEditable}

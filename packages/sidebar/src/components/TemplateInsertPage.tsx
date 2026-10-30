@@ -1,4 +1,3 @@
-import { useNotification } from "../context/NotificationProvider";
 import InsertBodyButton from "./InsertBodyButton";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getTemplateVariables, getTemplateContent } from "../common/template-content";
@@ -6,6 +5,7 @@ import type { Template } from "../core/data-types";
 import "./TemplateInsertPage.css";
 
 interface Props {
+  onNotify: (message: string) => void;
   template: Template;
   busy: boolean;
   editable: boolean;
@@ -15,14 +15,13 @@ interface Props {
   onError: (message: string) => void;
 }
 
-export default function TemplateInsertPage({ template, busy, editable, onClose, onPendingChange, onSuccess, onError }: Props) {
+export default function TemplateInsertPage({ onNotify: setCopyNotice, template, busy, editable, onClose, onPendingChange, onSuccess, onError }: Props) {
   const variables = useMemo(() => getTemplateVariables(template.content), [template.content]);
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(variables.map((name) => [name, ""])),
   );
   const composing = useRef(false);
   const copyPending = useRef(false);
-  const setCopyNotice = useNotification();
   const firstInput = useRef<HTMLInputElement>(null);
   const content = useMemo(() => getTemplateContent(template.content, values), [template.content, values]);
   const hasAllValues = variables.every((variable) => Boolean(values[variable]?.trim()));
@@ -96,6 +95,7 @@ export default function TemplateInsertPage({ template, busy, editable, onClose, 
         <div className="template-insert-footer">
           <button type="submit" disabled={busy || !hasAllValues} aria-busy={busy} title={hasAllValues ? "복사" : "모든 변수를 입력해주세요."}>복사</button>
           <InsertBodyButton
+            onNotify={setCopyNotice}
             text={content}
             label="메일 본문에 붙여넣기"
             beforeInsert={() => {

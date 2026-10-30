@@ -1,4 +1,3 @@
-import { useNotification } from "../context/NotificationProvider";
 import { useContext, useEffect, useRef, useState, type FormEvent } from "react";
 import { EditorStatusContext } from "../context/editorStatusContext";
 import { sendMessage } from "../common/message-bus";
@@ -6,11 +5,10 @@ import "./ToneCorrectionPage.css";
 
 const tones = ["상사/외부용", "보고/공문용", "마케팅/설득", "공지/안내", "부드러운 존댓말", "편한 말투"];
 
-export default function ToneCorrectionPage({ onClose }: { onClose: () => void }) {
+export default function ToneCorrectionPage({ onClose, onNotify: setNotice }: { onClose: () => void; onNotify: (message: string) => void }) {
   const [tone, setTone] = useState<string | null>(null);
   const editor = useContext(EditorStatusContext)?.latestStatus;
   const text = editor?.text ?? "";
-  const setNotice = useNotification();
   const [loading, setLoading] = useState(false);
   const [inserting, setInserting] = useState(false);
   const pending = useRef(false);
@@ -85,7 +83,7 @@ export default function ToneCorrectionPage({ onClose }: { onClose: () => void })
           </svg>
         </button>
       </div>
-      <form className="tone-form" onSubmit={submit} aria-busy={loading || inserting}>
+      <form className="tone-form" onSubmit={submit} noValidate aria-busy={loading || inserting}>
         <fieldset className="tone-options" disabled={loading || inserting}>
           <legend>
             문체 선택
