@@ -5,7 +5,6 @@ import { TemplateList } from "./TemplateList";
 import { TemplateVariablesForm } from "./TemplateVariablesForm";
 import { useMiniPopup } from "../hooks/useMiniPopup";
 import { usePopupPosition } from "../hooks/usePopupPosition";
-import fontStyles from "pretendard/dist/web/variable/pretendardvariable.css?inline";
 import normalize from "../styles/normalize.css?inline";
 import common from "../styles/common.css?inline";
 import styles from "./MiniPopup.css?inline";
@@ -31,7 +30,7 @@ export function MiniPopup({ selector, getTemplates, insertText, correctTone, get
 
   return (
     <>
-      <style>{fontStyles + normalize + common + styles}</style>
+      <style>{normalize + common + styles}</style>
       {view && (
         <div
           ref={popup}

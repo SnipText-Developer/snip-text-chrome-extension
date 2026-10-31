@@ -1,5 +1,8 @@
 :root {
-  font-family: "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family:
+    "Pretendard",
+    -apple-system,
+    system-ui;
   color: #202020;
   background: #fff;
   font-size: 14px;
@@ -43,5 +46,13 @@ p {
   margin: 0;
 }
 
-input, textarea { accent-color: #262626; }
-button, input, textarea, select { min-width: 0; }
+input,
+textarea {
+  accent-color: #262626;
+}
+button,
+input,
+textarea,
+select {
+  min-width: 0;
+}
