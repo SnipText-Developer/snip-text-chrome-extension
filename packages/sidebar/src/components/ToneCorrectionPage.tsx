@@ -5,11 +5,10 @@ import "./ToneCorrectionPage.css";
 
 const tones = ["상사/외부용", "보고/공문용", "마케팅/설득", "공지/안내", "부드러운 존댓말", "편한 말투"];
 
-export default function ToneCorrectionPage({ onClose }: { onClose: () => void }) {
+export default function ToneCorrectionPage({ onClose, onNotify: setNotice }: { onClose: () => void; onNotify: (message: string) => void }) {
   const [tone, setTone] = useState<string | null>(null);
   const editor = useContext(EditorStatusContext)?.latestStatus;
   const text = editor?.text ?? "";
-  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const [inserting, setInserting] = useState(false);
   const pending = useRef(false);
@@ -84,7 +83,7 @@ export default function ToneCorrectionPage({ onClose }: { onClose: () => void })
           </svg>
         </button>
       </div>
-      <form className="tone-form" onSubmit={submit} aria-busy={loading || inserting}>
+      <form className="tone-form" onSubmit={submit} noValidate aria-busy={loading || inserting}>
         <fieldset className="tone-options" disabled={loading || inserting}>
           <legend>
             문체 선택
@@ -106,7 +105,7 @@ export default function ToneCorrectionPage({ onClose }: { onClose: () => void })
           <label htmlFor="tone-text">메일 본문</label>
           <textarea id="tone-text" placeholder="메일 작성 창에 교정할 본문을 입력해주세요." value={text} readOnly />
         </div>
-        <p className="tone-notice" role="status">{loading ? "톤 교정 요청 중입니다. 잠시만 기다려주세요." : inserting ? "본문에 삽입 중입니다." : notice}</p>
+        <p className="tone-progress" role="status">{loading ? "톤 교정 요청 중입니다. 잠시만 기다려주세요." : inserting ? "본문에 삽입 중입니다." : ""}</p>
         <div className="tone-footer">
           <button type="submit" disabled={loading || inserting}>
             {loading && <span className="tone-spinner" aria-hidden="true" />}

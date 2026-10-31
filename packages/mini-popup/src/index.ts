@@ -4,6 +4,7 @@ import { createMiniPopupActions } from "./actions";
 import type { ConnectedPopupOptions, StartPopupOptions } from "./types";
 import { MiniPopup } from "./components/MiniPopup";
 import { createPopupHost } from "./dom/index";
+import { ensurePretendardFont } from "./dom/font";
 
 export { getTemplateVariables } from "./utils/text";
 
@@ -13,6 +14,7 @@ export function startPopup(options: StartPopupOptions | ConnectedPopupOptions): 
   const { getTemplates, insertText, correctTone, getEditorText } =
     "vendorName" in options ? createMiniPopupActions(options) : options;
   const { element: host, remove } = createPopupHost();
+  ensurePretendardFont(host.ownerDocument);
   const root = createRoot(host);
   root.render(createElement(MiniPopup, { selector, getTemplates, insertText, correctTone, getEditorText, host }));
   let stopped = false;

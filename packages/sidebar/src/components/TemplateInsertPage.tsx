@@ -5,24 +5,42 @@ import type { Template } from "../core/data-types";
 import "./TemplateInsertPage.css";
 
 interface Props {
+  onNotify: (message: string) => void;
   template: Template;
   busy: boolean;
   editable: boolean;
-  notice: string;
   onClose: () => void;
   onPendingChange: (pending: boolean) => void;
   onSuccess: () => void;
   onError: (message: string) => void;
 }
 
-export default function TemplateInsertPage({ template, busy, editable, notice, onClose, onPendingChange, onSuccess, onError }: Props) {
+export default function TemplateInsertPage({ onNotify: setCopyNotice, template, busy, editable, onClose, onPendingChange, onSuccess, onError }: Props) {
   const variables = useMemo(() => getTemplateVariables(template.content), [template.content]);
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(variables.map((name) => [name, ""])),
   );
   const composing = useRef(false);
+  const copyPending = useRef(false);
   const firstInput = useRef<HTMLInputElement>(null);
   const content = useMemo(() => getTemplateContent(template.content, values), [template.content, values]);
+  const hasAllValues = variables.every((variable) => Boolean(values[variable]?.trim()));
+
+  async function copy() {
+    if (busy || copyPending.current || composing.current || !hasAllValues) return;
+    copyPending.current = true;
+    onPendingChange(true);
+    setCopyNotice("");
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopyNotice(`‘${template.title}’ 내용을 복사했어요.`);
+    } catch {
+      setCopyNotice("복사하지 못했습니다. 텍스트를 직접 선택해 복사해주세요.");
+    } finally {
+      copyPending.current = false;
+      onPendingChange(false);
+    }
+  }
 
   useEffect(() => { firstInput.current?.focus(); }, []);
   useEffect(() => {
@@ -47,13 +65,14 @@ export default function TemplateInsertPage({ template, busy, editable, notice, o
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="m5 5 14 14M19 5 5 19" /></svg>
         </button>
       </div>
-      <p className="template-insert-preview" aria-label="삽입할 본문 미리보기">{content}</p>
+      <p className="template-insert-preview" aria-label="본문 미리보기">{content}</p>
       <form
         className="template-insert-form"
         onCompositionStart={() => { composing.current = true; }}
         onCompositionEnd={() => { composing.current = false; }}
         onSubmit={(event) => {
           event.preventDefault();
+          void copy();
         }}>
         <div className="template-insert-fields">
           {variables.map((variable, index) => (
@@ -67,14 +86,29 @@ export default function TemplateInsertPage({ template, busy, editable, notice, o
                 onChange={(event) => {
                   const value = event.target.value;
                   setValues((previous) => ({ ...previous, [variable]: value }));
+                  setCopyNotice("");
                 }}
               />
             </label>
           ))}
         </div>
-        <p className="notice" role="status" aria-live="polite">{notice}</p>
         <div className="template-insert-footer">
-          <InsertBodyButton text={content} type="submit" label="메일 본문에 삽입" beforeInsert={() => !busy && !composing.current} onPendingChange={onPendingChange} onSuccess={onSuccess} onError={onError} disabled={!editable} title={editable ? "메일 본문에 삽입" : "메일 작성 창을 열어주세요."} />
+          <button type="submit" disabled={busy || !hasAllValues} aria-busy={busy} title={hasAllValues ? "복사" : "모든 변수를 입력해주세요."}>복사</button>
+          <InsertBodyButton
+            onNotify={setCopyNotice}
+            text={content}
+            label="메일 본문에 붙여넣기"
+            beforeInsert={() => {
+              if (busy || composing.current) return false;
+              setCopyNotice("");
+              return true;
+            }}
+            onPendingChange={onPendingChange}
+            onSuccess={onSuccess}
+            onError={onError}
+            disabled={busy || !editable}
+            title={editable ? "메일 본문에 붙여넣기" : "메일 작성 창을 열어주세요."}
+          />
         </div>
       </form>
     </section>

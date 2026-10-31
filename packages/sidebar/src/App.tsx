@@ -1,12 +1,17 @@
+import NotificationToast from "./components/NotificationToast";
 // import LoginPage from "./components/LoginPage";
 import EditorStatusTestPanel from "./components/EditorStatusTestPanel";
 import TemplateListPage from "./components/TemplateListPage";
 import { EditorStatusProvider } from "./context/EditorStatusProvider";
 import "./App.css";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import ToneCorrectionPage from "./components/ToneCorrectionPage";
 
 function App() {
+  const [notification, setNotification] = useState<{ message: string; id: number } | null>(null);
+  const notify = useCallback((message: string) => {
+    setNotification((previous) => message ? { message, id: (previous?.id ?? 0) + 1 } : null);
+  }, []);
   const [showToneCorrection, setShowToneCorrection] = useState(false);
   // const [showTemplates, setShowTemplates] = useState(
   //   () => window.location.hash === "#templates",
@@ -19,10 +24,11 @@ function App() {
   //   return () => window.removeEventListener("hashchange", handleHashChange);
   // }, []);
 
-  // if (!showTemplates) return <LoginPage />;
+  // if (!showTemplates) return <LoginPage onNotify={notify} />;
 
   return (
     <EditorStatusProvider>
+      <div className="sidebar-shell">
       <main className="sidebar">
         <header className="profile-header">
           <div className="profile-avatar" aria-hidden="true">
@@ -64,14 +70,16 @@ function App() {
           </div>
         </header>
         {showToneCorrection ? (
-          <ToneCorrectionPage onClose={() => setShowToneCorrection(false)} />
+          <ToneCorrectionPage onNotify={notify} onClose={() => setShowToneCorrection(false)} />
         ) : (
           <>
-            <TemplateListPage onOpenToneCorrection={() => setShowToneCorrection(true)} />
+            <TemplateListPage onNotify={notify} onOpenToneCorrection={() => setShowToneCorrection(true)} />
             <EditorStatusTestPanel />
           </>
         )}
       </main>
+      <NotificationToast notification={notification} />
+      </div>
     </EditorStatusProvider>
   );
 }

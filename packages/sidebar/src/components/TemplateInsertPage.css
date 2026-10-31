@@ -12,7 +12,7 @@
 .template-insert-fields input { box-sizing: border-box; width: 100%; min-width: 0; padding: 9px 10px; border: 1px solid #e0e0e0; border-radius: 10px; background: #fff; color: #202020; font-size: 14px; font-weight: 400; line-height: 1.5; }
 .template-insert-fields input::placeholder { color: #808080; }
 .template-insert-fields input:focus { outline: none; border-color: #202020; box-shadow: 0 0 0 1px #202020; }
-.template-insert-footer { display: flex; justify-content: flex-end; margin-top: 16px; }
+.template-insert-footer { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 16px; }
 .template-insert-footer button { max-width: 100%; padding: 8px 14px; border-radius: 10px; background: #000; color: #fff; font-size: 13px; font-weight: 700; line-height: 1.5; }
 @media (max-width: 520px) {
   .template-insert-page { padding: 4px 0 8px; }

@@ -3,6 +3,7 @@ import { sendMessage } from "../common/message-bus";
 import "./InsertBodyButton.css";
 
 interface Props {
+  onNotify: (message: string) => void;
   text: string;
   disabled?: boolean;
   type?: "button" | "submit";
@@ -16,6 +17,7 @@ interface Props {
 
 export default function InsertBodyButton({
   text,
+  onNotify: setNotice,
   disabled = false,
   type = "button",
   label = "본문에 삽입",
@@ -26,7 +28,6 @@ export default function InsertBodyButton({
   onError,
 }: Props) {
   const [loading, setLoading] = useState(false);
-  const [notice, setNotice] = useState("");
   const pending = useRef(false);
   const mounted = useRef(true);
   useEffect(() => {
@@ -57,15 +58,15 @@ export default function InsertBodyButton({
             "삽입하지 못했습니다. 메일 작성 창을 확인하고 다시 시도해주세요.",
         );
       if (mounted.current) {
-        setNotice("본문에 삽입했습니다.");
-        onSuccess?.();
+        if (onSuccess) onSuccess();
+        else setNotice("본문에 삽입했습니다.");
       }
     } catch (error) {
       if (mounted.current) {
         const message =
           error instanceof Error ? error.message : "본문 삽입에 실패했습니다.";
-        setNotice(message);
-        onError?.(message);
+        if (onError) onError(message);
+        else setNotice(message);
       }
     } finally {
       pending.current = false;
@@ -94,11 +95,7 @@ export default function InsertBodyButton({
         aria-busy={loading}>
         {label}
       </button>
-      {!onSuccess && !onError && (
-        <span className="insert-body-notice" role="status">
-          {notice}
-        </span>
-      )}
+
     </>
   );
 }
