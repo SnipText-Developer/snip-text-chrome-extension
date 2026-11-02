@@ -23,7 +23,7 @@ mini-popup은 메일 페이지에 content script가 마운트하는 React UI입�
 | background | `src/background/service-worker.ts` | 요청 분기, 발신자 검증, 서비스 호출, 데이터 관리, 삽입 중계 |
 | content | `src/content/gmail.ts`, `src/content/naver.ts` | 에디터 탐색, 상태 감지, mini-popup 시작, 본문 DOM 변경 |
 | sidebar | `packages/sidebar/src/main.tsx`, `App.tsx` | 템플릿 검색·복사·삽입, 변수 입력, 톤 교정 화면 |
-| mini-popup | `packages/mini-popup/src/index.ts` | `/` 명령 감지, 목록·변수 폼·문체 선택 표시 |
+| mini-popup | `packages/mini-popup/src/index.tsx` | `/` 명령 감지, 목록·변수 폼·문체 선택 표시 |
 
 ## 2. 초기 실행
 

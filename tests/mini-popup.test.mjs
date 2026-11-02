@@ -61,7 +61,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   };
   const editor = document.querySelector("#editor");
   const inserted = [];
-  const { startPopup } = await import(moduleUrl("../packages/mini-popup/src/index.ts"));
+  const { startPopup } = await import(moduleUrl("../packages/mini-popup/src/index.tsx"));
   const { router: backgroundRouter } = await import(moduleUrl("../src/background/editor/router/router.ts"));
   const { createEditorRouter } = await import(moduleUrl("../src/content/editor-router.ts"));
   const actions = await import(moduleUrl("../packages/mini-popup/src/actions.ts"));
