@@ -48,14 +48,4 @@ const write = (value: AuthToken, expiresAt: number): AuthToken => {
   return { ...value };
 };
 
-const create = (value: AuthToken, expiresAt: number): AuthToken | null => {
-  if (read(value.vendor)) return null;
-  return write(value, expiresAt);
-};
-
-const update = (value: AuthToken, expiresAt: number): AuthToken | null => {
-  if (!read(value.vendor)) return null;
-  return write(value, expiresAt);
-};
-
-export const repository = { create, read, update, deleteOne };
+export const repository = { read, update: write, deleteOne };

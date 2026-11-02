@@ -12,11 +12,11 @@ const request = (method, data, source = sender) => router({ src: "PAGE", dst: "B
 
 test("auth token CRUD isolates vendors, validates input and ignores untrusted senders", async (t) => {
   t.after(() => { service.deleteOne("GOOGLE"); service.deleteOne("NAVER"); });
-  assert.equal(await request("POST", { vendor: "GOOGLE", token: "secret" }, { ...sender, tab: { id: 1 } }), undefined);
+  assert.equal(await request("PUT", { vendor: "GOOGLE", token: "secret" }, { ...sender, tab: { id: 1 } }), undefined);
   assert.equal((await request("GET", { vendor: "GOOGLE" })).statusCode, 404);
-  assert.equal((await request("POST", { vendor: "GOOGLE", token: "google-token" })).statusCode, 200);
-  assert.equal((await request("POST", { vendor: "NAVER", token: "naver-token" })).statusCode, 200);
-  assert.equal((await request("POST", { vendor: "GOOGLE", token: "duplicate" })).statusCode, 400);
+  assert.equal((await request("PUT", { vendor: "GOOGLE", token: "google-token" })).statusCode, 200);
+  assert.equal((await request("PUT", { vendor: "NAVER", token: "naver-token" })).statusCode, 200);
+  assert.equal(await request("POST", { vendor: "GOOGLE", token: "ignored" }), undefined);
   assert.deepEqual((await request("GET", { vendor: "GOOGLE" })).data, { vendor: "GOOGLE", token: "google-token" });
   assert.equal((await request("PUT", { vendor: "GOOGLE", token: "updated" })).statusCode, 200);
   assert.equal(service.read("GOOGLE").token, "updated");
@@ -27,7 +27,9 @@ test("auth token CRUD isolates vendors, validates input and ignores untrusted se
   assert.equal(service.read("GOOGLE").token, "updated");
   assert.equal((await request("DELETE", { vendor: "GOOGLE" })).data.deleted, true);
   assert.equal((await request("GET", { vendor: "GOOGLE" })).statusCode, 404);
-  assert.equal((await request("PUT", { vendor: "GOOGLE", token: "missing" })).statusCode, 404);
+  assert.deepEqual(await request("PUT", { vendor: "GOOGLE", token: "recreated" }), { statusCode: 200, data: { vendor: "GOOGLE", token: "recreated" } });
+  assert.equal(service.read("GOOGLE").token, "recreated");
+  assert.equal((await request("DELETE", { vendor: "GOOGLE" })).data.deleted, true);
   assert.equal((await request("DELETE", { vendor: "GOOGLE" })).data.deleted, false);
 });
 
@@ -45,13 +47,15 @@ test("AES-GCM encryption rejects altered ciphertext and vendor", () => {
 test("tokens expire within five minutes and corrupted credentials are discarded", (t) => {
   t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: 100_000 });
   t.after(() => { service.deleteOne("GOOGLE"); service.deleteOne("NAVER"); t.mock.timers.reset(); });
-  service.create({ vendor: "GOOGLE", token: "short", expiresAt: 100_100 });
-  service.create({ vendor: "NAVER", token: "long", expiresAt: 999_999 });
+  service.update({ vendor: "GOOGLE", token: "short", expiresAt: 100_100 });
+  service.update({ vendor: "NAVER", token: "long", expiresAt: 999_999 });
   t.mock.timers.tick(100);
   assert.equal(service.read("GOOGLE"), null);
+  service.update({ vendor: "GOOGLE", token: "renewed" });
+  assert.equal(service.read("GOOGLE").token, "renewed");
   t.mock.timers.tick(299_900);
   assert.equal(service.read("NAVER"), null);
-  service.create({ vendor: "GOOGLE", token: "token" });
+  service.update({ vendor: "GOOGLE", token: "token" });
   globalThis.__AUTH_TOKEN_ENCRYPTION_KEY_HEX__ = "22".repeat(32);
   try { assert.equal(service.read("GOOGLE"), null); }
   finally { globalThis.__AUTH_TOKEN_ENCRYPTION_KEY_HEX__ = "11".repeat(32); }

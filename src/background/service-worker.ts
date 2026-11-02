@@ -5,6 +5,13 @@ import { router as editorRouter } from "./editor/router/router";
 import { router as templateRouter } from "./template/router";
 import { router as aiRouter } from "./ai/router";
 
+import { apiConfig } from "../config/api";
+import { service as templateService } from "./template/service";
+
+const templatesReady = templateService.syncTemplates(apiConfig.templatesUrl).catch((error: unknown) => {
+  console.warn("템플릿 초기 조회에 실패하여 로컬 템플릿을 사용합니다.", error);
+});
+
 listenMessage(
   async (
     req: MessageRequest,
@@ -17,6 +24,7 @@ listenMessage(
     }
 
     if (req.path.startsWith("/template/")) {
+      await templatesReady;
       return await templateRouter(req, sender);
     }
 

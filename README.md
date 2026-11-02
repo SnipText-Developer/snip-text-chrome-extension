@@ -162,3 +162,18 @@ sidebar는 `packages/sidebar/src/config/vendors.ts`에서 로그인 표시, 메�
 
 
 CONTENT 요청은 등록된 HTTPS 메일 URL에서 허용합니다. 예외는 Chrome의 `sender.origin`이 같은 허용 도메인인 `about:blank`·`about:srcdoc` 하위 프레임(`frameId > 0`)뿐입니다. `blob:`·`data:`·`filesystem:`은 허용하지 않습니다. `node --test tests/message-sender.test.mjs`로 송신자 검증과 템플릿 조회 권한을 확인합니다.
+
+### 초기 템플릿 API 설정
+
+`src/config/api.ts`의 `apiConfig.templatesUrl`에 GET API URL을 지정합니다.
+외부 API를 사용하려면 `public/manifest.json`에 해당 서버의 호스트 권한도 추가합니다.
+예: `"host_permissions": ["https://api.example.com/*"]`.
+설정 후 다시 빌드하고 확장 프로그램을 새로고침합니다.
+
+응답은 배열 `[...]` 또는 `{ "templates": [...] }`을 지원합니다.
+서버 DTO의 `templateId`는 숫자 또는 양의 정수 문자열을 사용할 수 있습니다.
+`title`, `shortcut`, `content`는 필수입니다. 생략한 `variables`는 본문에서 추출하며,
+생략한 날짜는 epoch를 사용합니다. localhost 호스트 권한은 기본으로 포함되어 있습니다.
+서비스 워커가 시작될 때마다 조회하여 로컬 목록 전체를 교체합니다. 빈 배열은 목록을 비웁니다.
+첫 템플릿 요청은 초기 조회가 끝날 때까지 기다립니다. URL이 비어 있으면 조회하지 않습니다.
+10초 내에 응답하지 않거나 HTTP 오류·잘못된 응답이 발생하면 기존 로컬 목록을 유지합니다.
