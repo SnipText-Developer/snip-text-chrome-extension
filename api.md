@@ -85,9 +85,8 @@ BACKGROUND 최상위 라우터에서 `/auth/`, `/template/`, `/editor/`, `/ai/` 
 
 | 메서드 | 요청 `data`                     | 성공 응답 `data`       | 추가 오류                     |
 | ------ | ------------------------------- | ---------------------- | ----------------------------- |
-| POST   | `{ vendor, token, expiresAt? }` | `AuthToken`            | 기존 유효 토큰이 있으면 400   |
 | GET    | `{ vendor }`                    | `AuthToken`            | 없거나 만료되었으면 404       |
-| PUT    | `{ vendor, token, expiresAt? }` | `AuthToken`            | 갱신할 유효 토큰이 없으면 404 |
+| PUT    | `{ vendor, token, expiresAt? }` | `AuthToken`            | 없으면 생성, 있으면 갱신      |
 | DELETE | `{ vendor }`                    | `{ deleted: boolean }` | 없으면 `deleted: false`로 200 |
 
 성공 코드는 모두 `200`입니다. `token`은 공백만 있는 문자열을 허용하지 않으며, 저장할 때 원래 문자열을 유지합니다. `expiresAt`은 선택적인 Unix epoch 밀리초 숫자로 현재보다 미래여야 합니다. 유효기간은 기본 5분이며 더 먼 만료 시각을 요청해도 현재부터 최대 5분으로 제한합니다. 응답에는 `expiresAt`을 포함하지 않습니다.
@@ -96,13 +95,13 @@ BACKGROUND 최상위 라우터에서 `/auth/`, `/template/`, `/editor/`, `/ai/` 
 {
   "src": "PAGE",
   "dst": "BACKGROUND",
-  "method": "POST",
+  "method": "PUT",
   "path": "/auth/token",
   "data": { "vendor": "GOOGLE", "token": "example-token" }
 }
 ```
 
-GET·PUT에서 토큰을 찾지 못하면 `404`, `{ "msg": "인증 토큰이 없습니다." }`를 반환합니다. 토큰은 background 메모리에 보관하므로 서비스 워커가 재시작되면 유지되지 않습니다.
+PUT은 토큰이 없거나 만료되었으면 새로 생성하고, 유효한 토큰이 있으면 갱신합니다. POST는 지원하지 않으며 응답 없이 무시합니다. GET에서 토큰을 찾지 못하면 `404`, `{ "msg": "인증 토큰이 없습니다." }`를 반환합니다. 토큰은 background 메모리에 보관하므로 서비스 워커가 재시작되면 유지되지 않습니다.
 
 ## BACKGROUND: 템플릿
 

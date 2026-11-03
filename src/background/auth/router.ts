@@ -10,17 +10,14 @@ export const router = async (
 
   try {
     if (req.path !== "/auth/token") return;
-    if (req.method === "POST") {
-      return { statusCode: 200, data: service.create(req.data) };
-    }
-    if (req.method === "GET" || req.method === "PUT") {
-      const token =
-        req.method === "GET"
-          ? service.read(req.data?.vendor)
-          : service.update(req.data);
+    if (req.method === "GET") {
+      const token = service.read(req.data?.vendor);
       return token
         ? { statusCode: 200, data: token }
         : { statusCode: 404, data: { msg: "인증 토큰이 없습니다." } };
+    }
+    if (req.method === "PUT") {
+      return { statusCode: 200, data: service.update(req.data) };
     }
     if (req.method === "DELETE") {
       return {

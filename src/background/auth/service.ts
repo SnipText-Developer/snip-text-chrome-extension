@@ -39,13 +39,6 @@ function parseToken(input: unknown): { value: AuthToken; expiresAt: number } {
   };
 }
 
-const create = (input: unknown) => {
-  const { value, expiresAt } = parseToken(input);
-  const result = repository.create(value, expiresAt);
-  if (!result) throw new AuthError("이미 등록된 인증 토큰입니다.");
-  return result;
-};
-
 const read = (vendor: unknown) => repository.read(parseVendor(vendor));
 const update = (input: unknown) => {
   const { value, expiresAt } = parseToken(input);
@@ -54,4 +47,4 @@ const update = (input: unknown) => {
 const deleteOne = (vendor: unknown) =>
   repository.deleteOne(parseVendor(vendor));
 
-export const service = { create, read, update, deleteOne };
+export const service = { read, update, deleteOne };

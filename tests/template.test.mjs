@@ -34,7 +34,7 @@ test("full template replacement validates, persists and preserves concurrent wri
   assert.deepEqual(await repository.readAll(), [
     { templateId: 1, title: "기존 제목", shortcut: "/old", content: "기존 본문", variables: [], lastUsedAt: "1970-01-01T00:00:00.000Z", createdAt: "1970-01-01T00:00:00.000Z", editedAt: "1970-01-01T00:00:00.000Z" },
   ]);
-  stored = {};
+  stored = { "snip.templates": [template(1), template(2)] };
   const first = template(1, { title: "새 이름", shortcut: "/new", content: "새 본문" });
   assert.equal((await replace(first)).statusCode, 200);
   assert.deepEqual((await service.listTemplates())[0], first);
@@ -75,4 +75,69 @@ test("full template replacement validates, persists and preserves concurrent wri
   failWrite = false;
   assert.equal((await replace(first)).statusCode, 200);
   assert.deepEqual((await repository.readAll())[0], first);
+});
+
+test("startup sync validates API data and keeps cached templates on failure", async (t) => {
+  const originalFetch = globalThis.fetch;
+  t.after(() => { globalThis.fetch = originalFetch; });
+  stored = { "snip.templates": [template(1)] };
+  let calls = 0;
+  globalThis.fetch = async (url, options) => {
+    calls++;
+    assert.equal(url, "https://api.example.com/templates");
+    assert.ok(options.signal instanceof AbortSignal);
+    return { ok: true, json: async () => ({ templates: [template(10)] }) };
+  };
+  await service.syncTemplates("");
+  assert.equal(calls, 0);
+  await service.syncTemplates("https://api.example.com/templates");
+  assert.deepEqual(await repository.readAll(), [template(10)]);
+  for (const data of [{}, { templates: [template(2), {}] }, { templates: [template(2), template(2)] }]) {
+    globalThis.fetch = async () => ({ ok: true, json: async () => data });
+    await assert.rejects(service.syncTemplates("https://api.example.com/templates"));
+    assert.deepEqual(await repository.readAll(), [template(10)]);
+  }
+  globalThis.fetch = async () => ({ ok: false, status: 503 });
+  await assert.rejects(service.syncTemplates("https://api.example.com/templates"));
+  assert.deepEqual(await repository.readAll(), [template(10)]);
+  globalThis.fetch = async () => { throw new Error("network failure"); };
+  await assert.rejects(service.syncTemplates("https://api.example.com/templates"));
+  assert.deepEqual(await repository.readAll(), [template(10)]);
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ templates: [] }) });
+  await service.syncTemplates("https://api.example.com/templates");
+  assert.deepEqual(await repository.readAll(), []);
+});
+
+test("Spring template DTO arrays are normalized without weakening edit validation", async (t) => {
+  const originalFetch = globalThis.fetch;
+  t.after(() => { globalThis.fetch = originalFetch; });
+  globalThis.fetch = async () => ({ ok: true, json: async () => [
+    { templateId: "42", title: "서버 템플릿", shortcut: "/server", content: "{{이름}}님, {{이름}}님" },
+  ] });
+  await service.syncTemplates("http://localhost:8080/api/template");
+  const [saved] = await repository.readAll();
+  assert.equal(saved.templateId, 42);
+  assert.deepEqual(saved.variables, ["이름"]);
+  assert.equal(saved.createdAt, "1970-01-01T00:00:00.000Z");
+  assert.equal((await replace({ ...saved, templateId: "42" })).statusCode, 400);
+});
+
+test("sync reports all invalid field paths and leaves storage unchanged", async (t) => {
+  const originalFetch = globalThis.fetch;
+  t.after(() => { globalThis.fetch = originalFetch; });
+  stored = { "snip.templates": [template(1)] };
+  globalThis.fetch = async () => ({ ok: true, json: async () => [
+    { templateId: "bad", title: 10, shortcut: "invalid", content: "{{이름}}", variables: [null], createdAt: null },
+    null,
+  ] });
+  await assert.rejects(service.syncTemplates("https://api.example.com/templates"), (error) => {
+    assert.equal(error.name, "TemplateApiValidationError");
+    const paths = error.issues.map((issue) => issue.path);
+    for (const path of ["templates[0].templateId", "templates[0].title", "templates[0].shortcut", "templates[0].variables[0]", "templates[0].createdAt", "templates[1]"]) {
+      assert.ok(paths.includes(path), path);
+    }
+    assert.match(error.message, /받은 타입: number/);
+    return true;
+  });
+  assert.deepEqual(await repository.readAll(), [template(1)]);
 });

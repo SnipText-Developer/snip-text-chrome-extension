@@ -1,4 +1,3 @@
-import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { createMiniPopupActions } from "./actions";
 import type { ConnectedPopupOptions, StartPopupOptions } from "./types";
@@ -16,7 +15,16 @@ export function startPopup(options: StartPopupOptions | ConnectedPopupOptions): 
   const { element: host, remove } = createPopupHost();
   ensurePretendardFont(host.ownerDocument);
   const root = createRoot(host);
-  root.render(createElement(MiniPopup, { selector, getTemplates, insertText, correctTone, getEditorText, host }));
+  root.render(
+    <MiniPopup
+      selector={selector}
+      getTemplates={getTemplates}
+      insertText={insertText}
+      correctTone={correctTone}
+      getEditorText={getEditorText}
+      host={host}
+    />,
+  );
   let stopped = false;
   return () => {
     if (stopped) return;
