@@ -27,6 +27,10 @@ test("AI tone correction prefixes the stored editor text and validates callers",
   const received = { statusCode: 200, data: { text: "(톤교정)작성한 본문\n둘째 줄" } };
   assert.deepEqual(await router(request, content), received);
   assert.deepEqual(await router({ ...request, src: "PAGE", data: { tone: "격식", vendorName: "GOOGLE" } }, page), received);
+  assert.deepEqual(await router({
+    ...request, src: "PAGE", data: { tone: "격식", vendorName: "GOOGLE", text: "사이드바에서 편집한 원문" },
+  }, page), { statusCode: 200, data: { text: "(톤교정)사이드바에서 편집한 원문" } });
+  assert.deepEqual(await router(request, content), received, "Side panel text must not change the stored editor body");
   assert.equal(await router(request, { ...content, url: "https://example.com/" }), undefined);
   assert.equal(await router({ ...request, src: "PAGE" }, content), undefined);
   assert.equal(await router({ ...request, method: "GET" }, content), undefined);

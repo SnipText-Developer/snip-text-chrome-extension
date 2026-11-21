@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 import NotificationToast from "./components/NotificationToast";
 import SidebarContent from "./components/SidebarContent";
-import SidebarHeader from "./components/SidebarHeader";
 import { EditorStatusProvider } from "./context/EditorStatusProvider";
 import "./App.css";
 
@@ -18,7 +17,6 @@ function App() {
     <EditorStatusProvider>
       <div className="sidebar-shell">
         <main className="sidebar">
-          <SidebarHeader onShowTemplates={showTemplates} />
           <SidebarContent
             showToneCorrection={showToneCorrection}
             onNotify={notify}

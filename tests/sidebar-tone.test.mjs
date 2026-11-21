@@ -18,6 +18,8 @@ test("sidebar requests tone correction and shows loading, success and retry stat
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
   const previousChrome = globalThis.chrome;
   const requests = [];
+  let notice = "";
+  const onNotify = (message) => { notice = message; };
   let resolveRequest;
   globalThis.chrome = { runtime: { sendMessage: (request) => {
     requests.push(request);
@@ -32,10 +34,24 @@ test("sidebar requests tone correction and shows loading, success and retry stat
   });
   await act(async () => root.render(createElement(EditorStatusContext.Provider, {
     value: { latestStatus: editor, statuses: { GOOGLE: editor } },
-  }, createElement(ToneCorrectionPage, { onClose() {} }))));
+  }, createElement(ToneCorrectionPage, { onClose() {}, onNotify }))));
   assert.equal(document.querySelector("#tone-text").value, "작성한 본문");
-  assert.equal(document.querySelector("#tone-text").readOnly, true);
-  await act(async () => document.querySelector('input[type="radio"]').click());
+  assert.equal(document.querySelector("#tone-text").readOnly, false);
+  assert.equal(document.querySelector('input[type="radio"]').checked, true);
+  assert.equal(document.querySelectorAll('input[type="radio"]').length, 7);
+  assert.deepEqual([...document.querySelectorAll(".tone-counts dd")].map((node) => node.textContent), ["6자", "5자"]);
+  const chips = [...document.querySelectorAll(".tone-option")];
+  chips.forEach((chip, index) => {
+    chip.getBoundingClientRect = () => ({ top: Math.floor(index / 3) * 28, left: index % 3 * 80, width: 76 });
+  });
+  chips[0].querySelector("input").focus();
+  for (const [key, expected] of [["ArrowRight", 1], ["ArrowDown", 4], ["ArrowLeft", 3], ["ArrowLeft", 3], ["ArrowUp", 0], ["ArrowUp", 0]]) {
+    const event = new dom.window.KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
+    await act(async () => document.activeElement.dispatchEvent(event));
+    assert.equal(event.defaultPrevented, true);
+    assert.equal(document.activeElement, chips[expected].querySelector("input"));
+    assert.equal(document.activeElement.checked, true);
+  }
   const submit = () => document.querySelector("form").dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true }));
   await act(async () => { submit(); submit(); });
   assert.equal(requests.length, 1, "Duplicate submissions are suppressed");
@@ -57,22 +73,30 @@ test("sidebar requests tone correction and shows loading, success and retry stat
     data: { text: "(톤교정)작성한 본문" },
   });
   await act(async () => resolveRequest({ statusCode: 500, data: { msg: "작성 창 없음" } }));
-  assert.equal(document.querySelector('[role="status"]').textContent, "작성 창 없음");
+  assert.equal(notice, "작성 창 없음");
   assert.equal(document.querySelector('button[type="submit"]').disabled, false);
   await act(async () => submit());
   await act(async () => resolveRequest({ statusCode: 200, data: { text: "교정된 본문" } }));
   assert.deepEqual(requests.at(-1).data, { text: "교정된 본문" });
   await act(async () => resolveRequest({ statusCode: 200, data: {} }));
-  assert.equal(document.querySelector('[role="status"]').textContent, "교정 결과를 본문에 삽입했습니다.");
+  assert.equal(notice, "교정 결과를 본문에 삽입했습니다.");
   assert.equal(document.querySelector('button[type="submit"]').disabled, false);
   await act(async () => submit());
   await act(async () => resolveRequest({ statusCode: 500, data: { msg: "요청 실패" } }));
-  assert.equal(document.querySelector('[role="status"]').textContent, "요청 실패");
+  assert.equal(notice, "요청 실패");
   assert.equal(document.querySelector(".tone-spinner"), null);
   assert.equal(document.querySelector('button[type="submit"]').disabled, false);
   await act(async () => submit());
   await act(async () => resolveRequest({ statusCode: 200, data: {} }));
-  assert.match(document.querySelector('[role="status"]').textContent, /교정 결과를 받지 못했습니다/);
+  assert.match(notice, /교정 결과를 받지 못했습니다/);
+  await act(async () => {
+    const input = document.querySelector("#tone-text");
+    input.value = "수정한 문장";
+    input.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+  });
+  await act(async () => submit());
+  assert.deepEqual(requests.at(-1).data, { vendorName: "GOOGLE", tone: "상사/외부용", text: "수정한 문장" });
+  await act(async () => resolveRequest({ statusCode: 500, data: { msg: "요청 실패" } }));
 });
 
 test("InsertBodyButton inserts its text without an onClick prop", async (t) => {
@@ -83,6 +107,8 @@ test("InsertBodyButton inserts its text without an onClick prop", async (t) => {
   }
   const previousChrome = globalThis.chrome;
   const requests = [];
+  let notice = "";
+  const onNotify = (message) => { notice = message; };
   let resolve;
   globalThis.chrome = { runtime: { sendMessage: (request) => {
     requests.push(request);
@@ -94,15 +120,15 @@ test("InsertBodyButton inserts its text without an onClick prop", async (t) => {
     globalThis.chrome = previousChrome;
     dom.window.close();
   });
-  await act(async () => root.render(createElement(InsertBodyButton, { text: "{{이름}}님\n안녕하세요." })));
+  await act(async () => root.render(createElement(InsertBodyButton, { onNotify, text: "{{이름}}님\n안녕하세요." })));
   await act(async () => { document.querySelector("button").click(); document.querySelector("button").click(); });
   assert.equal(requests.length, 1);
   assert.deepEqual(requests[0].data, { text: "{{이름}}님\n안녕하세요." });
   assert.equal(document.querySelector("button").disabled, false, "Pending requests must not flash the disabled style");
   await act(async () => resolve({ statusCode: 500, data: { msg: "본문 삽입 실패" } }));
-  assert.equal(document.querySelector('[role="status"]').textContent, "본문 삽입 실패");
+  assert.equal(notice, "본문 삽입 실패");
   assert.equal(document.querySelector("button").disabled, false);
   await act(async () => document.querySelector("button").click());
   await act(async () => resolve({ statusCode: 200, data: {} }));
-  assert.equal(document.querySelector('[role="status"]').textContent, "본문에 삽입했습니다.");
+  assert.equal(notice, "본문에 삽입했습니다.");
 });

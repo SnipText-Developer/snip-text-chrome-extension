@@ -1,25 +1,95 @@
-.template-insert-page { padding: 4px 0 8px; }
-.template-insert-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.template-insert-header h2 { margin: 0; font-size: 18px; line-height: 1.4; letter-spacing: -0.3px; overflow-wrap: anywhere; }
-.template-insert-shortcut { display: inline-block; margin-top: 6px; padding: 3px 10px; border-radius: 8px; background: #f0f0f0; color: #000; font-size: 13px; overflow-wrap: anywhere; }
-.template-insert-close { display: grid; place-items: center; flex-shrink: 0; width: 32px; height: 32px; padding: 4px; border-radius: 8px; color: #808080; background: transparent; }
-.template-insert-close:hover:enabled { background: #f3f4f6; }
-.template-insert-close svg { width: 24px; height: 24px; }
-.template-insert-preview { margin-top: 16px; padding: 14px; border-radius: 10px; background: #f5f5f5; color: #666; font-size: 13px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
-.template-insert-form { margin-top: 16px; }
-.template-insert-fields { display: grid; gap: 14px; }
-.template-insert-fields label { display: grid; gap: 6px; color: #202020; font-size: 13px; font-weight: 650; overflow-wrap: anywhere; }
-.template-insert-fields input { box-sizing: border-box; width: 100%; min-width: 0; padding: 9px 10px; border: 1px solid #e0e0e0; border-radius: 10px; background: #fff; color: #202020; font-size: 14px; font-weight: 400; line-height: 1.5; }
-.template-insert-fields input::placeholder { color: #808080; }
-.template-insert-fields input:focus { outline: none; border-color: #202020; box-shadow: 0 0 0 1px #202020; }
-.template-insert-footer { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 16px; }
-.template-insert-footer button { max-width: 100%; padding: 8px 14px; border-radius: 10px; background: #000; color: #fff; font-size: 13px; font-weight: 700; line-height: 1.5; }
-@media (max-width: 520px) {
-  .template-insert-page { padding: 4px 0 8px; }
-  .template-insert-header h2 { font-size: 18px; letter-spacing: -0.5px; }
-  .template-insert-shortcut { font-size: 13px; }
-  .template-insert-preview { margin-top: 18px; padding: 14px; border-radius: 12px; font-size: 13px; }
-  .template-insert-form { margin-top: 16px; }
-  .template-insert-fields { gap: 16px; }
-  .template-insert-footer { margin-top: 16px; }
+.sidebar-shell > .sidebar > .template-insert-page {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  min-width: 0;
+  color: #19212c;
 }
+
+.template-insert-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  margin: -20px -16px 0;
+  padding: 0 16px;
+  border-bottom: 1px solid #e0e4e8;
+}
+.template-insert-header h1 { font-size: 15px; font-weight: 700; line-height: 1.3; }
+.template-insert-header .template-insert-close { width: 24px; padding: 2px; color: #8793a3; }
+
+.template-insert-summary { margin-top: 24px; min-width: 0; }
+.template-insert-summary h2 {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.4px;
+  overflow-wrap: anywhere;
+}
+.template-insert-shortcut {
+  display: inline-block;
+  max-width: 100%;
+  margin-top: 14px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #e7edff;
+  color: #2454d6;
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.template-insert-content { margin-top: 24px; }
+.template-insert-content h3 { font-size: 14px; font-weight: 700; }
+.template-insert-preview {
+  min-height: 120px;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid #e0e4e8;
+  border-radius: 8px;
+  background: #f4f6f8;
+  color: #4b586a;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.template-insert-form { display: flex; flex: 1; flex-direction: column; margin-top: 16px; }
+.template-insert-required { margin-bottom: 10px; color: #4b586a; font-size: 12px; }
+.template-insert-fields { display: grid; gap: 12px; }
+.template-insert-fields label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.template-insert-fields input {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #cbd2d9;
+  border-radius: 8px;
+  background: #fff;
+  color: #19212c;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.template-insert-fields input::placeholder { color: #6c7888; }
+.template-insert-fields input:focus-visible { outline: 2px solid #2454d6; outline-offset: 1px; }
+
+.template-insert-footer { margin-top: auto; padding-top: 16px; }
+.template-insert-footer button {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #2454c6;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 650;
+}
+.template-insert-footer button:hover:enabled { background: #1c43ad; }
+.template-insert-footer button:disabled { background: #e3e7ea; color: #4b586a; opacity: 1; }

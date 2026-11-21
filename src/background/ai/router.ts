@@ -23,6 +23,7 @@ export async function router(
     const result = await service.correctTone({
       vendorName: req.src === "CONTENT" ? getContentVendor(sender) : data?.vendorName,
       tone: data?.tone,
+      text: req.src === "PAGE" ? data?.text : undefined,
       removeCommand: req.src === "CONTENT",
     });
     return result

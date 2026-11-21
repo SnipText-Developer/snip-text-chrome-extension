@@ -307,13 +307,13 @@ CR 단독, 탭, 기존 NBSP는 그대로 유지합니다. Range 삽입 중 예�
 - 호출자: 기존 발신자 검증을 통과한 CONTENT 또는 PAGE
 - 목적지: BACKGROUND
 - CONTENT 요청 `data`: `{ tone: string }` (메일 서비스는 발신자에서 결정)
-- PAGE 요청 `data`: `{ vendorName: VendorName, tone: string }`
+- PAGE 요청 `data`: `{ vendorName: VendorName, tone: string, text?: string }`. `text`를 전달하면 사이드바에서 편집한 원문을 사용합니다.
 - 성공 응답: `200`, `{ text: "(톤교정)" + 에디터본문 }`
 - 문체 누락·공백 또는 잘못된 vendor: `400`
 - 빈 본문: `400`, `{ msg: "교정할 본문을 작성해주세요." }`
 - 에디터 상태 없음: `404`
 
-본문은 observer가 BACKGROUND에 전달해 저장한 에디터 상태에서 읽습니다. 요청의 `text`는 사용하지 않습니다. CONTENT 요청은 본문 끝의 `/톤`, `/톤교`, `/톤교정` 예약어와 뒤따르는 공백을 제외합니다. 현재 실제 교정 대신 본문 앞에 `(톤교정)`을 붙여 반환하며, 에디터 본문을 변경하지 않습니다. 실제 교정 API 연결 지점은 `src/background/ai/service.ts`의 TODO입니다. 라우터는 발신자 검증과 응답 변환을, 서비스는 입력 검증·본문 조회·예약어 제거·교정을 담당합니다.
+PAGE에서 `text`를 생략하거나 CONTENT에서 요청하면 observer가 BACKGROUND에 저장한 본문을 읽습니다. CONTENT 요청은 본문 끝의 `\톤`, `\톤교`, `\톤교정` 예약어와 뒤따르는 공백을 제외합니다. 현재 실제 교정 대신 본문 앞에 `(톤교정)`을 붙여 반환하며, 에디터 본문을 변경하지 않습니다. 실제 교정 API 연결 지점은 `src/background/ai/service.ts`의 TODO입니다. 라우터는 발신자 검증과 응답 변환을, 서비스는 입력 검증·본문 조회·예약어 제거·교정을 담당합니다.
 
 ### GET `/editor/text`
 

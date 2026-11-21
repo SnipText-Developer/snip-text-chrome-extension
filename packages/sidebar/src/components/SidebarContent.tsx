@@ -1,4 +1,3 @@
-import EditorStatusTestPanel from "./EditorStatusTestPanel";
 import TemplateListPage from "./TemplateListPage";
 import ToneCorrectionPage from "./ToneCorrectionPage";
 
@@ -20,9 +19,6 @@ export default function SidebarContent({
   }
 
   return (
-    <>
-      <TemplateListPage onNotify={onNotify} onOpenToneCorrection={onOpenToneCorrection} />
-      <EditorStatusTestPanel />
-    </>
+    <TemplateListPage onNotify={onNotify} onOpenToneCorrection={onOpenToneCorrection} />
   );
 }
