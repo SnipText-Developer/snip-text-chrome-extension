@@ -87,4 +87,14 @@ const replaceAll = (templates: Template[]): Promise<void> => {
   return operation;
 };
 
-export const repository = { readAll, replace, replaceAll };
+const seedIfMissing = (templates: Template[]): Promise<void> => {
+  const operation = pending.then(async () => {
+    const stored = await chrome.storage.local.get(STORAGE_KEY);
+    if (stored[STORAGE_KEY] !== undefined) return;
+    await chrome.storage.local.set({ [STORAGE_KEY]: templates });
+  });
+  pending = operation.catch(() => {});
+  return operation;
+};
+
+export const repository = { readAll, replace, replaceAll, seedIfMissing };

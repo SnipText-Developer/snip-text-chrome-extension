@@ -141,3 +141,63 @@ test("sync reports all invalid field paths and leaves storage unchanged", async 
   });
   assert.deepEqual(await repository.readAll(), [template(1)]);
 });
+
+test("local API startup loads the open dashboard's RAM templates for the mini popup", async (t) => {
+  const origin = "http://localhost:3000";
+  const expected = template(12, { title: "대시보드에서 편집한 템플릿" });
+  const originalFetch = globalThis.fetch;
+  const originalLocation = Object.getOwnPropertyDescriptor(globalThis, "location");
+  Object.defineProperty(globalThis, "location", { configurable: true, value: new URL(origin) });
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalLocation) Object.defineProperty(globalThis, "location", originalLocation);
+    else delete globalThis.location;
+    delete chrome.tabs;
+    delete chrome.scripting;
+  });
+  stored = {};
+  globalThis.fetch = async (url, options) => {
+    if (url === "http://localhost:8080/api/template") throw new TypeError("fetch failed");
+    assert.equal(url, "/api/v1/templates");
+    assert.equal(options.headers.Authorization, "Bearer sniptext-test-token");
+    assert.equal(options.redirect, "error");
+    return Response.json({
+      isSuccess: true,
+      code: "TEMPLATE200_1",
+      result: { templates: [{ ...expected, lastUsedAt: null }] },
+    });
+  };
+  chrome.tabs = { query: async (options) => {
+    assert.deepEqual(options, { url: origin + "/*" });
+    return [{ id: 23 }];
+  } };
+  chrome.scripting = { executeScript: async ({ target, world, args, func }) => {
+    assert.deepEqual(target, { tabId: 23 });
+    assert.equal(world, "MAIN");
+    return [{ result: await func(...args) }];
+  } };
+
+  await service.syncTemplates("http://localhost:8080/api/template", origin);
+  const response = await router(
+    { src: "CONTENT", dst: "BACKGROUND", method: "GET", path: "/template/list", data: {} },
+    { id: "extension-id", tab: { id: 4 }, url: "https://mail.google.com/" },
+  );
+  assert.deepEqual(response, {
+    statusCode: 200,
+    data: { templates: [{ ...expected, lastUsedAt: expected.createdAt }] },
+  });
+});
+
+test("development seed is available to the mini popup and preserves a saved list", async () => {
+  const request = { src: "CONTENT", dst: "BACKGROUND", method: "GET", path: "/template/list", data: {} };
+  const content = { id: "extension-id", tab: { id: 4 }, url: "https://mail.google.com/" };
+  stored = {};
+  const response = await router(request, content, service.seedTestTemplates);
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.data.templates.map(({ shortcut }) => shortcut), ["/감사", "/일정", "/견적"]);
+  for (const templates of [[], [template(9)]]) {
+    stored = { "snip.templates": templates };
+    await service.seedTestTemplates();
+    assert.deepEqual(await repository.readAll(), templates);
+  }
+});

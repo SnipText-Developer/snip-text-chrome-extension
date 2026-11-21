@@ -106,16 +106,16 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
     return "(톤교정)작성한 본문";
   };
   let stop;
-  await act(async () => { stop = startPopup({ selector: "#editor", getTemplates, insertText: insertTemplate, correctTone, getEditorText }); });
+  await act(async () => { stop = startPopup({ selector: "#editor", newTemplateUrl: "http://localhost:3000/templates/new", getTemplates, insertText: insertTemplate, correctTone, getEditorText }); });
   const host = document.querySelector("#snip-text-mini-popup");
   assert.equal(host.shadowRoot, null);
   t.after(async () => { await act(async () => { stop(); }); dom.window.close(); });
   const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
   const key = (target, value, extra = {}) => target.dispatchEvent(new window.KeyboardEvent("keydown", { key: value, bubbles: true, composed: true, cancelable: true, ...extra }));
-  async function open() {
+  async function open(trigger = "\\") {
     await act(async () => {
       editor.focus();
-      editor.textContent = "/";
+      editor.textContent = trigger;
       const range = document.createRange();
       range.setStart(editor.firstChild, 1);
       range.collapse(true);
@@ -125,8 +125,20 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
       await settle();
     });
   }
+  function fillVariables() {
+    for (const input of host.querySelectorAll("input")) {
+      input.value = "테스트";
+      input.dispatchEvent(new window.Event("input", { bubbles: true }));
+    }
+  }
+  await open("/");
+  assert.notEqual(host.dataset.open, "true");
+  await open("₩");
+  assert.equal(host.dataset.open, "true");
   await open();
   assert.equal(host.querySelectorAll('[role="option"]').length, 2);
+  assert.equal(host.querySelector("header").textContent, "최근 사용");
+  assert.equal(host.querySelector(".popup-footer a").href, "http://localhost:3000/templates/new");
   assert.ok(document.activeElement === editor);
   await act(async () => {
     for (const selector of [".popup", "header", '[role="listbox"]']) {
@@ -155,6 +167,9 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
     });
   });
   editor.addEventListener("keydown", stopEditorKeyBubbling);
+  assert.equal(host.querySelector('[aria-selected="true"]'), null);
+  await act(async () => { key(editor, "ArrowDown"); });
+  assert.equal(host.querySelector('[role="option"]').getAttribute("aria-selected"), "true");
   await act(async () => { key(editor, "ArrowDown"); });
   assert.equal(scrollingList.scrollTop, 50, "The last option reveals the list's bottom padding");
   assert.equal(host.querySelectorAll('[role="option"]')[1].getAttribute("aria-selected"), "true");
@@ -202,7 +217,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
     const requestsBeforeSyllable = requests;
     await act(async () => {
       editor.dispatchEvent(new window.CompositionEvent("compositionstart", { bubbles: true }));
-      editor.textContent = `/${query}`;
+      editor.textContent = `\\${query}`;
       const range = document.createRange();
       range.setStart(editor.firstChild, query.length);
       range.setEnd(editor.firstChild, query.length + 1);
@@ -235,20 +250,22 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   await open();
   await act(async () => {
     editor.dispatchEvent(new window.CompositionEvent("compositionstart", { bubbles: true }));
-    editor.textContent = "/견적";
+    editor.textContent = "\\견적";
     window.getSelection().collapse(editor.firstChild, 3);
     editor.dispatchEvent(new window.InputEvent("input", { bubbles: true, isComposing: true }));
     key(editor, "Enter", { isComposing: true });
     editor.dispatchEvent(new window.CompositionEvent("compositionend", { bubbles: true }));
     await settle();
   });
+  assert.equal(host.querySelector("header").textContent, "검색 결과");
+  assert.equal(host.querySelector(".popup-footer a"), null);
   assert.equal(host.querySelector("input"), null, "IME confirmation must not select a template");
   await act(async () => { key(editor, "Enter"); });
   assert.ok(host.querySelector("input"));
   await act(async () => { key(host.querySelector("input"), "Escape"); });
 
   await open();
-  await act(async () => { key(editor, "ArrowDown"); key(editor, "Enter"); });
+  await act(async () => { key(editor, "ArrowDown"); key(editor, "ArrowDown"); key(editor, "Enter"); });
   assert.ok(document.activeElement === host.querySelector("input"));
   const [name, amount] = host.querySelectorAll("input");
   await act(async () => {
@@ -288,10 +305,10 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   assert.ok(document.activeElement === amount);
   assert.ok(host.querySelector(".variable-entry"), "Moving focus between popup inputs keeps the form open");
   await act(async () => { host.querySelector("form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true })); });
-  assert.equal(delivered.at(-1).request.data.text, "민님 {{금액}}원");
-  assert.equal(host.querySelector('[role="status"]').textContent, "템플릿의 변수를 모두 입력해 주세요.");
+  assert.equal(amount.getAttribute("aria-invalid"), "true");
+  assert.equal(host.querySelector('[role="alert"]').textContent, "금액 값을 입력해 주세요.");
   assert.equal(inserted.length, 1, "Missing variables must not be inserted");
-  assert.equal(editor.textContent, "/");
+  assert.equal(editor.textContent, "\\");
   await act(async () => {
     const amountInput = host.querySelectorAll("input")[1];
     amountInput.value = "100";
@@ -300,14 +317,14 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   await act(async () => { host.querySelector("form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true })); });
   assert.equal(inserted.at(-1), "민님 100원");
   await open();
-  await act(async () => { key(editor, "ArrowDown"); key(editor, "Enter"); });
+  await act(async () => { key(editor, "ArrowDown"); key(editor, "ArrowDown"); key(editor, "Enter"); });
   let pageEscapes = 0;
   const handlePageEscape = (event) => { if (event.key === "Escape") pageEscapes++; };
   document.addEventListener("keydown", handlePageEscape);
   await act(async () => { key(host.querySelector("input"), "Escape"); });
   document.removeEventListener("keydown", handlePageEscape);
   assert.equal(pageEscapes, 0, "Returning to the list must not trigger the mail page's Escape handling");
-  assert.equal(editor.textContent, "/");
+  assert.equal(editor.textContent, "\\");
   assert.equal(inserted.length, 2);
   assert.equal(host.querySelectorAll('[role="option"]').length, 2);
   assert.ok(document.activeElement === host.querySelectorAll('[role="option"]')[1]);
@@ -387,11 +404,11 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
     document.dispatchEvent(new window.Event("selectionchange"));
     await settle();
   });
-  assert.notEqual(host.style.display, "none", "Losing the slash trigger through caret movement keeps the popup open");
+  assert.notEqual(host.style.display, "none", "Losing the backslash trigger through caret movement keeps the popup open");
 
 
   await open();
-  await act(async () => { key(editor, "ArrowDown"); key(editor, "Enter"); });
+  await act(async () => { key(editor, "ArrowDown"); key(editor, "ArrowDown"); key(editor, "Enter"); });
   const outside = document.createElement("input");
   document.body.append(outside);
   await act(async () => { outside.focus(); });
@@ -400,7 +417,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   outside.remove();
 
   await open();
-  await act(async () => { key(editor, "ArrowDown"); key(editor, "Enter"); });
+  await act(async () => { key(editor, "ArrowDown"); key(editor, "ArrowDown"); key(editor, "Enter"); });
   await act(async () => {
     document.body.dispatchEvent(new window.MouseEvent("pointerdown", { bubbles: true }));
   });
@@ -416,7 +433,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
 
   await act(async () => {
     editor.focus();
-    editor.innerHTML = '<span>앞 문장 </span><b>/</b><i>1</i><span> 뒷 문장</span>';
+    editor.innerHTML = '<span>앞 문장 </span><b>\\</b><i>1</i><span> 뒷 문장</span>';
     const caret = document.createRange();
     caret.setStart(editor.querySelector("i").firstChild, 1);
     caret.collapse(true);
@@ -431,7 +448,8 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   assert.equal(window.getSelection().isCollapsed, true);
 
   await open();
-  await act(async () => { key(editor, "ArrowDown"); key(editor, "Enter"); });
+  await act(async () => { key(editor, "ArrowDown"); key(editor, "ArrowDown"); key(editor, "Enter"); });
+  await act(async () => { fillVariables(); });
   await act(async () => {
     editor.textContent = "메일 페이지에서 갱신한 본문";
     host.querySelector("form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
@@ -483,7 +501,8 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   assert.equal((await backgroundRouter({ ...insertionRequest, data: { text: null } }, contentSender)).statusCode, 400);
   assert.equal(delivered.length, beforeRejected);
   await open();
-  await act(async () => { key(editor, "ArrowDown"); key(editor, "Enter"); });
+  await act(async () => { key(editor, "ArrowDown"); key(editor, "ArrowDown"); key(editor, "Enter"); });
+  await act(async () => { fillVariables(); });
   failInsertion = true;
   await act(async () => { host.querySelector("form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true })); });
   assert.match(host.querySelector('[role="status"]').textContent, /삽입하지 못했습니다/);
@@ -546,7 +565,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   await editorService.updateEditorStatus("GOOGLE", { text: "" });
   assert.equal((await backgroundRouter(textRequest, contentSender)).data.text, "", "Empty stored bodies are valid responses");
 
-  async function openTone(text = "작성한 본문 /톤교정") {
+  async function openTone(text = "작성한 본문 \\톤교정") {
     await act(async () => {
       editor.focus();
       editor.textContent = text;
@@ -562,13 +581,29 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
     assert.match(host.querySelector('[role="option"]').textContent, /톤교정/);
     await act(async () => { key(editor, "Enter"); });
     assert.equal(host.querySelectorAll('[role="option"]').length, 7);
-    assert.equal(host.querySelectorAll('.popup-group > .popup').length, 2);
-    assert.equal(document.activeElement === host.querySelector('.tone-menu [role="option"]'), true, "Enter moves focus into the right tone menu");
+    assert.equal(host.querySelectorAll('.popup-group > .popup').length, 1);
+    assert.equal(document.activeElement === host.querySelector('.tone-menu [role="option"]'), true, "Enter moves focus into the tone menu");
   }
   await openTone();
+  host.querySelectorAll(".tone-options button").forEach((button, index) => {
+    Object.defineProperties(button, {
+      offsetTop: { value: Math.floor(index / 3) * 28 },
+      offsetLeft: { value: (index % 3) * 72 },
+      offsetWidth: { value: 68 },
+    });
+  });
+  for (const [direction, title] of [
+    ["ArrowRight", "보고/공문용"],
+    ["ArrowDown", "부드러운 존댓말"],
+    ["ArrowLeft", "공지/안내"],
+    ["ArrowUp", "상사/외부용"],
+  ]) {
+    await act(async () => { key(document.activeElement, direction); });
+    assert.equal(document.activeElement.textContent, title);
+  }
   await act(async () => { key(document.activeElement, "ArrowUp"); });
   assert.equal(document.activeElement.textContent, "감성/에세이");
-  assert.equal(window.getComputedStyle(document.activeElement).backgroundColor, "rgb(237, 237, 237)", "Keyboard selection remains visibly highlighted in the tone menu");
+  assert.equal(window.getComputedStyle(document.activeElement).backgroundColor, "rgb(222, 237, 252)", "Keyboard selection remains visibly highlighted in the tone menu");
 
   assert.notEqual(host.style.display, "none");
   await act(async () => { key(document.activeElement, "ArrowDown"); });
@@ -583,7 +618,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   assert.equal(host.style.display, "none");
   assert.deepEqual(toneRequests, ["상사/외부용", "상사/외부용"]);
 
-  await openTone("작성한 본문/톤교정");
+  await openTone("작성한 본문₩톤교정");
   holdTone = true;
   const countBeforeTone = inserted.length;
   await act(async () => host.querySelector('[role="option"]').click());
@@ -607,7 +642,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
     editor.textContent = "작성한 본문 톤교정";
     editor.dispatchEvent(new window.Event("input", { bubbles: true }));
   });
-  assert.equal(host.style.display, "none", "Removing the slash closes the tone menu");
+  assert.equal(host.style.display, "none", "Removing the backslash closes the tone menu");
 
   async function editCommand(text) {
     await act(async () => {
@@ -623,9 +658,9 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
     });
   }
   for (const prefix of ["", "작성한 본문", "작성한 본문 "]) {
-    await editCommand(prefix + "/톤교");
+    await editCommand(prefix + "\\톤교");
     assert.match(host.querySelector('[role="option"]').textContent, /톤교정/);
-    await editCommand(prefix + "/톤ㅇ");
+    await editCommand(prefix + "\\톤ㅇ");
     if (host.dataset.open === "true") {
       assert.equal(host.querySelector('.reserved-command'), null, "An invalid tone prefix must remove the reserved command");
     } else {
@@ -634,7 +669,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
     assert.equal(host.querySelector('.tone-menu'), null);
   }
   await openTone();
-  await editCommand("작성한 본문/톤ㅇ");
+  await editCommand("작성한 본문\\톤ㅇ");
   assert.equal(host.dataset.open, "false", "Editing the command closes the tone submenu");
   assert.equal(host.style.display, "none");
 
@@ -653,7 +688,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
     deletedTriggerResponse(templates);
     await settle();
   });
-  assert.equal(host.style.display, "none", "Late results must not reopen a popup after slash deletion");
+  assert.equal(host.style.display, "none", "Late results must not reopen a popup after backslash deletion");
   await open();
   await act(async () => { key(editor, "Enter"); deferred(templates); await settle(); });
   assert.equal(inserted.length, insertedBeforeLoading, "Enter during loading must not queue insertion");
@@ -685,7 +720,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
 test("popup actions synchronize current editor before tone correction", async (t) => {
   const { createMiniPopupActions } = await import(moduleUrl("../packages/mini-popup/src/actions.ts"));
   const requests = [];
-  let text = "작성한 본문 /톤교정";
+  let text = "작성한 본문 \\톤교정";
   const previousChrome = globalThis.chrome;
   t.after(() => { globalThis.chrome = previousChrome; });
   globalThis.chrome = { runtime: { sendMessage: async (request) => {
@@ -699,7 +734,7 @@ test("popup actions synchronize current editor before tone correction", async (t
   assert.equal(await actions.correctTone("정중하게"), "교정한 본문");
   assert.deepEqual(requests.map(({ path }) => path), ["/editor/update-status", "/ai/tone-correction"]);
   assert.deepEqual(requests[0].data, { vendorName: "GOOGLE", status: { text, isEditable: true } });
-  text = "/톤교정";
+  text = "\\톤교정";
   await assert.rejects(actions.correctTone("정중하게"), /교정할 본문/);
   assert.equal(requests.length, 2);
 });

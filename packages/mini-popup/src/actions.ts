@@ -50,7 +50,7 @@ export function createMiniPopupActions(
     getTemplates,
     correctTone: async (tone) => {
       const status = getEditorStatus();
-      if (!status?.text?.replace(/\/톤(?:교(?:정)?)?\s*$/, "").trim()) {
+      if (!status?.text?.replace(/[\\₩]톤(?:교(?:정)?)?\s*$/, "").trim()) {
         throw new Error("교정할 본문을 작성해주세요.");
       }
       // Synchronize this editor before asking BACKGROUND to read its body.

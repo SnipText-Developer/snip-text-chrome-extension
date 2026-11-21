@@ -77,7 +77,7 @@ export const validateTemplateApiResponse = (input: unknown): Template[] => {
     }
     const dates: Record<string, unknown> = {};
     for (const field of ["createdAt", "editedAt", "lastUsedAt"] as const) {
-      const value = dto[field] === undefined
+      const value = dto[field] === undefined || (field === "lastUsedAt" && dto[field] === null)
         ? (field === "createdAt" ? "1970-01-01T00:00:00.000Z" : dto.createdAt ?? "1970-01-01T00:00:00.000Z")
         : dto[field];
       dates[field] = value;

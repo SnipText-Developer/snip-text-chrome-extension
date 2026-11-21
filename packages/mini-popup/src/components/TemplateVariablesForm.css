@@ -1,23 +1,24 @@
-#snip-text-mini-popup .list.variables {
-  max-height: min(360px, calc(100vh - 112px));
+#snip-text-mini-popup .variable-entry form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
-#snip-text-mini-popup .variable-entry form {
-  display: grid;
-  gap: 12px;
-  padding: 12px;
+#snip-text-mini-popup .list.variables {
+  max-height: 340px;
+  padding: 2px 0 6px;
 }
 
 #snip-text-mini-popup .variable-entry .fields {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 #snip-text-mini-popup .variable-entry label {
   display: grid;
   gap: 4px;
-  color: #525252;
-  font-size: 14px;
+  color: #18212c;
+  font-size: 13px;
   font-weight: 600;
   overflow-wrap: anywhere;
 }
@@ -27,45 +28,61 @@
   min-width: 0;
   min-height: 34px;
   padding: 6px 8px;
-  border: 1px solid #e5e5e5;
+  border: 1px solid #cbd3db;
   border-radius: 7px;
   font: inherit;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 13px;
+  line-height: 18px;
   font-weight: 400;
-  color: #202020;
+  color: #18212c;
   background: #fff;
 }
 
-#snip-text-mini-popup .variable-entry input::placeholder { color: #999; }
+#snip-text-mini-popup .variable-entry input::placeholder { color: #4b586a; }
 
-#snip-text-mini-popup .actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
+#snip-text-mini-popup .variable-entry input:focus-visible {
+  outline: 2px solid #598ad7;
+  outline-offset: -2px;
 }
 
-#snip-text-mini-popup .actions button {
+#snip-text-mini-popup .variable-entry input[aria-invalid="true"] {
+  border-color: #e42a21;
+  background: #fff5f5;
+  outline-color: #e42a21;
+}
+
+#snip-text-mini-popup .field-error {
+  color: #d62a21;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+#snip-text-mini-popup .variable-hint {
+  margin-top: 7px;
+  font-size: 12px;
+}
+
+#snip-text-mini-popup .popup-footer.variable-keys {
+  justify-content: flex-start;
+  column-gap: 6px;
+}
+
+#snip-text-mini-popup .variable-keys button {
+  display: inline;
   width: auto;
-  min-width: 60px;
-  min-height: 32px;
-  padding: 5px 12px;
-  text-align: center;
-  border: 1px solid #e5e5e5;
-  border-radius: 7px;
-  background: #fff;
-  color: #525252;
-  font-size: 14px;
-  font-weight: 600;
+  padding: 0;
+  background: transparent;
+  text-align: left;
 }
 
-#snip-text-mini-popup .actions button[type="submit"] {
-  background: #171717;
-  color: #fff;
-  border-color: transparent;
+#snip-text-mini-popup .variable-keys button::before {
+  content: "·";
+  margin-inline-end: 6px;
 }
 
-#snip-text-mini-popup .actions button[type="submit"]:hover:not(:disabled) {
-  background: #333;
-  border-color: transparent;
+#snip-text-mini-popup .variable-keys button:hover:not(:disabled),
+#snip-text-mini-popup .variable-keys button:focus-visible {
+  background: transparent;
+  color: #2057d4;
+  text-decoration: underline;
 }

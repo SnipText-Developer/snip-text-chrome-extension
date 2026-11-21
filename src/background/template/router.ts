@@ -5,6 +5,7 @@ import { service, TemplateValidationError } from "./service";
 export const router = async (
   req: MessageRequest,
   sender: chrome.runtime.MessageSender,
+  initializeTemplates?: () => Promise<void>,
 ): Promise<MessageResponse | void> => {
   try {
     if (req.method === "GET" && req.path === "/template/list") {
@@ -12,6 +13,7 @@ export const router = async (
         return;
       }
 
+      await initializeTemplates?.();
       return {
         statusCode: 200,
         data: { templates: await service.listTemplates() },
@@ -23,6 +25,7 @@ export const router = async (
         return;
       }
 
+      await initializeTemplates?.();
       const template = await service.replaceTemplate(req.data);
       return template
         ? { statusCode: 200, data: { template } }

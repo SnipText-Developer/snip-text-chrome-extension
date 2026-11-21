@@ -1,7 +1,7 @@
 import type { Template } from "./types";
 
 export const toneCommand: Template = {
-  templateId: -1, title: "톤교정", shortcut: "/톤교정",
+  templateId: -1, title: "톤교정", shortcut: "\\톤교정",
   content: "AI를 통해 작성한 글의 문체를 다듬을 수 있습니다.",
   variables: [], lastUsedAt: "", createdAt: "", editedAt: "",
 };

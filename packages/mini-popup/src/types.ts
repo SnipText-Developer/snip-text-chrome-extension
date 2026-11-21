@@ -10,6 +10,7 @@ export interface Template {
 }
 
 export interface StartPopupOptions {
+  newTemplateUrl?: string;
   selector: string;
   getTemplates: () => Promise<Template[]>;
   insertText: (text: string) => Promise<void>;
@@ -23,5 +24,6 @@ export interface PopupConnection {
 }
 
 export interface ConnectedPopupOptions extends PopupConnection {
+  newTemplateUrl?: string;
   selector: string;
 }

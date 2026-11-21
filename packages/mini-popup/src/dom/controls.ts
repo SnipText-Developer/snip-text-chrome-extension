@@ -37,6 +37,25 @@ export function createOptionListDom(root: HTMLElement) {
   };
 }
 
+function getVerticalToneOption(options: HTMLButtonElement[], index: number, movingDown: boolean): number {
+  const bounds = options.map((option) => ({ top: option.offsetTop, left: option.offsetLeft, width: option.offsetWidth }));
+  const current = bounds[index];
+  const rows = [...new Set(bounds.map((rect) => rect.top))];
+  const row = rows.indexOf(current.top);
+  const targetTop = rows[(row + (movingDown ? 1 : -1) + rows.length) % rows.length];
+  const center = current.left + current.width / 2;
+  let nearest = index;
+  let distance = Infinity;
+  bounds.forEach((rect, optionIndex) => {
+    if (rect.top !== targetTop) return;
+    const gap = Math.abs(rect.left + rect.width / 2 - center);
+    if (gap >= distance) return;
+    nearest = optionIndex;
+    distance = gap;
+  });
+  return nearest;
+}
+
 function connectList(
   root: HTMLElement, context: PopupKeyboardContext,
   read: () => OptionListHandlers, toneMenu: boolean,
@@ -63,12 +82,20 @@ function connectList(
     const index = focused >= 0 ? focused : active;
     if ((!inside || toneMenu) && event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      if (!event.repeat) handlers.onChoose(index);
+      if (!event.repeat) handlers.onChoose(Math.max(0, index));
       return true;
     }
-    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    const vertical = event.key === "ArrowDown" || event.key === "ArrowUp";
+    const horizontal = toneMenu && (event.key === "ArrowLeft" || event.key === "ArrowRight");
+    if (!vertical && !horizontal) return;
     event.preventDefault();
-    const next = (index + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length;
+    const forward = event.key === "ArrowDown" || event.key === "ArrowRight";
+    let next = forward ? 0 : options.length - 1;
+    if (index >= 0) {
+      next = toneMenu && vertical
+        ? getVerticalToneOption(options, index, forward)
+        : (index + (forward ? 1 : -1) + options.length) % options.length;
+    }
     active = next;
     handlers.onActiveChange(next);
     if (inside || toneMenu) list.focusOption(next);
@@ -107,4 +134,10 @@ export function connectTemplateInput(
   });
   root.querySelector<HTMLInputElement>("input:not(:disabled)")?.focus({ preventScroll: true });
   return disconnect;
+}
+
+export function focusVariableInput(form: HTMLFormElement | null, name: string): void {
+  if (!form) return;
+  const inputs = Array.from(form.querySelectorAll("input"));
+  inputs.find((input) => input.name === name)?.focus();
 }

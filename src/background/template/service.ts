@@ -1,3 +1,5 @@
+import { testTemplates } from "./test-templates";
+import { readDashboardTestTemplates } from "./test-dashboard";
 import { validateTemplateApiResponse } from "./api-validation";
 import type { Template } from "../../core/data-types";
 import { DuplicateShortcutError, repository } from "./repository";
@@ -120,13 +122,24 @@ const replaceTemplate = async (input: unknown): Promise<Template | null> => {
   }
 };
 
-const syncTemplates = async (url: string): Promise<void> => {
-  if (!url) return;
+async function fetchTemplates(url: string): Promise<Template[]> {
   const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
   if (!response.ok) throw new Error(`템플릿 API 요청 실패: ${response.status}`);
-  const data: unknown = await response.json();
-  const templates = validateTemplateApiResponse(data);
-  await repository.replaceAll(templates);
-};
+  return validateTemplateApiResponse(await response.json());
+}
 
-export const service = { listTemplates, replaceTemplate, syncTemplates };
+async function syncTemplates(url: string, testDashboardOrigin = ""): Promise<void> {
+  if (!url) return;
+  const templates = await fetchTemplates(url).catch(async (error: unknown) => {
+    // Only the local development API may fall back to test data.
+    if (new URL(url).hostname !== "localhost" || !testDashboardOrigin) throw error;
+    const data = await readDashboardTestTemplates(testDashboardOrigin);
+    if (data === null) throw error;
+    return validateTemplateApiResponse(data);
+  });
+  await repository.replaceAll(templates);
+}
+
+const seedTestTemplates = () => repository.seedIfMissing(testTemplates);
+
+export const service = { listTemplates, replaceTemplate, syncTemplates, seedTestTemplates };

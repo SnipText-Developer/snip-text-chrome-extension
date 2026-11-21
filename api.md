@@ -58,7 +58,7 @@ BACKGROUND는 `req.src`뿐 아니라 실제 `chrome.runtime.MessageSender`를 �
 | 호출자  | 허용 조건                                                                                                                                                                                                                                               |
 | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | PAGE    | `src: "PAGE"`, 같은 확장 프로그램 ID, `sender.tab` 없음, `sender.url === chrome.runtime.getURL("src/page/index.html")`                                                                                                                                  |
-| CONTENT | `src: "CONTENT"`, 같은 확장 프로그램 ID, 탭 ID 존재, HTTPS의 `mail.google.com` 또는 `mail.naver.com`에서 보낸 메시지. `about:blank`·`about:srcdoc`은 `frameId > 0`인 하위 프레임이며 Chrome의 `sender.origin`이 등록된 HTTPS 메일 도메인인 경우만 허용합니다. `blob:`·`data:`·`filesystem:`은 거부 |
+| CONTENT | `src: "CONTENT"`, 같은 확장 프로그램 ID, 탭 ID 존재, HTTPS의 `mail.google.com` 또는 `mail.naver.com`에서 보낸 메시지. `about:blank`는 `frameId > 0`인 하위 프레임이며 Chrome의 `sender.origin`이 등록된 HTTPS 메일 도메인인 경우만 허용합니다. `about:srcdoc`·`blob:`·`data:`·`filesystem:`은 거부 |
 
 BACKGROUND 수신 메시지는 `dst: "BACKGROUND"`여야 합니다. 권한이 없는 요청이나 각 라우터가 지원하지 않는 메서드·경로 조합은 응답 없이 무시합니다. 일괄적으로 `401`이나 `403`을 반환하지 않습니다.
 

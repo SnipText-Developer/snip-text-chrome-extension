@@ -52,11 +52,11 @@ test("popup always stays below the cursor and limits its height to the remaining
   }
 });
 
-test("popup anchor follows the caret end rather than the slash start", async () => {
+test("popup anchor follows the caret end rather than the backslash start", async () => {
   const { JSDOM } = await import("jsdom");
   const { moduleUrl } = await import("./module-url.mjs");
   const { createEditorDom } = await import(moduleUrl("../packages/mini-popup/src/dom/editor.ts"));
-  const dom = new JSDOM('<div id="editor" contenteditable="true" tabindex="0">/template</div>');
+  const dom = new JSDOM('<div id="editor" contenteditable="true" tabindex="0">\\template</div>');
   const previousNode = globalThis.Node;
   const previousNodeFilter = globalThis.NodeFilter;
   globalThis.Node = dom.window.Node;

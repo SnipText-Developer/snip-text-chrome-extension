@@ -161,7 +161,7 @@ sidebar는 `packages/sidebar/src/config/vendors.ts`에서 로그인 표시, 메�
 `node --test tests/vendors.test.mjs`로 벤더 판별, 유사 도메인 차단, 작성 경로, 빌드 등록을 검증합니다.
 
 
-CONTENT 요청은 등록된 HTTPS 메일 URL에서 허용합니다. 예외는 Chrome의 `sender.origin`이 같은 허용 도메인인 `about:blank`·`about:srcdoc` 하위 프레임(`frameId > 0`)뿐입니다. `blob:`·`data:`·`filesystem:`은 허용하지 않습니다. `node --test tests/message-sender.test.mjs`로 송신자 검증과 템플릿 조회 권한을 확인합니다.
+CONTENT 요청은 등록된 HTTPS 메일 URL에서 허용합니다. 예외는 Chrome의 `sender.origin`이 같은 허용 도메인인 `about:blank` 하위 프레임(`frameId > 0`)뿐입니다. `about:srcdoc`·`blob:`·`data:`·`filesystem:`은 허용하지 않습니다. `node --test tests/message-sender.test.mjs`로 송신자 검증과 템플릿 조회 권한을 확인합니다.
 
 ### 초기 템플릿 API 설정
 
@@ -174,6 +174,7 @@ CONTENT 요청은 등록된 HTTPS 메일 URL에서 허용합니다. 예외는 Ch
 서버 DTO의 `templateId`는 숫자 또는 양의 정수 문자열을 사용할 수 있습니다.
 `title`, `shortcut`, `content`는 필수입니다. 생략한 `variables`는 본문에서 추출하며,
 생략한 날짜는 epoch를 사용합니다. localhost 호스트 권한은 기본으로 포함되어 있습니다.
-서비스 워커가 시작될 때마다 조회하여 로컬 목록 전체를 교체합니다. 빈 배열은 목록을 비웁니다.
+서비스 워커의 첫 템플릿 요청에서 조회하여 로컬 목록 전체를 교체합니다. 빈 배열은 목록을 비웁니다.
 첫 템플릿 요청은 초기 조회가 끝날 때까지 기다립니다. URL이 비어 있으면 조회하지 않습니다.
-10초 내에 응답하지 않거나 HTTP 오류·잘못된 응답이 발생하면 기존 로컬 목록을 유지합니다.
+로컬 HTTP API가 실패하면 `apiConfig.testDashboardOrigin`에 열린 개발 대시보드 탭의 테스트 API를 조회합니다. 기본값은 `http://localhost:3000`이며, 대시보드를 개발 모드로 열어 둔 뒤 템플릿 목록을 열면 현재 RAM 목록을 가져옵니다. 배포 설정에서는 `testDashboardOrigin`을 빈 문자열로 지정합니다.
+두 조회가 모두 실패하면 기존 로컬 목록을 유지하고 다음 요청에서 재시도합니다. 개발 설정에서 저장된 목록이 없는 첫 실행에는 감사, 일정, 견적 테스트 템플릿을 저장합니다.

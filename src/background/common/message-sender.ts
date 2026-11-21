@@ -37,7 +37,7 @@ export function getContentVendor(sender: chrome.runtime.MessageSender) {
         return null;
       return vendor.id;
     }
-    // Only blank/srcdoc subframes may inherit an allowed mail origin.
+    // Only blank subframes may inherit an allowed mail origin.
     if (
       !sender.frameId ||
       url.protocol !== "about:" ||

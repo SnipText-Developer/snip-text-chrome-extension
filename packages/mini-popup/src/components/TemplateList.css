@@ -1,48 +1,74 @@
 #snip-text-mini-popup .list[role="listbox"] {
-  padding: 6px;
-  scroll-padding-block: 6px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 3px;
+  max-height: 184px;
+  overflow-x: hidden;
+  padding-bottom: 6px;
+  scroll-padding-bottom: 6px;
 }
 
-#snip-text-mini-popup button[role="option"] {
-  display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
+#snip-text-mini-popup .list button[role="option"] {
+  display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
+  min-width: 0;
   min-height: 34px;
-  padding: 7px 8px;
-  border-radius: 7px;
+  padding: 4px 0;
+  border-radius: 6px;
+  background: #fff;
+}
+
+#snip-text-mini-popup .list button[aria-selected="true"],
+#snip-text-mini-popup .list button[role="option"]:hover,
+#snip-text-mini-popup .list button[role="option"]:focus-visible {
+  background: #deedfc;
 }
 
 #snip-text-mini-popup .template-command {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 47%;
+  padding: 2px 6px;
   overflow: hidden;
+  border-radius: 5px;
+  background: #deedfc;
+  color: #0056ab;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
 }
 
 #snip-text-mini-popup .template-text {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #666;
-  font-size: 13px;
+  color: #4b586a;
+  font-size: 12px;
+}
+
+#snip-text-mini-popup .option-chevron {
+  display: none;
+  flex: 0 0 7px;
+  height: 7px;
+  margin-inline-end: 8px;
+  border: solid #8592a2;
+  border-width: 1.5px 1.5px 0 0;
+  transform: rotate(45deg);
+}
+
+#snip-text-mini-popup .list button[aria-selected="true"] .option-chevron,
+#snip-text-mini-popup button.reserved-command .option-chevron {
+  display: block;
 }
 
 #snip-text-mini-popup .message {
-  padding: 14px 8px;
-  text-align: center;
-  color: #737373;
-  font-size: 14px;
-}
-
-#snip-text-mini-popup button.reserved-command[role="option"] {
-  grid-template-columns: max-content minmax(0, 1fr) max-content;
-}
-#snip-text-mini-popup .reserved-command .template-text {
-  margin-left: 6px;
-  font-size: 12px;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  padding: 6px 0;
+  color: #4b586a;
+  font-size: 13px;
 }
