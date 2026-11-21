@@ -10,13 +10,15 @@ const { default: ToneCorrectionPage } = await import(moduleUrl("../packages/side
 }));
 const { EditorStatusContext } = await import(moduleUrl("../packages/sidebar/src/context/editorStatusContext.ts"));
 
-test("sidebar requests tone correction and shows loading, success and retry states", async (t) => {
+test("sidebar previews tone correction and inserts or copies only on demand", async (t) => {
   const dom = new JSDOM('<div id="root"></div>', { pretendToBeVisual: true });
   for (const name of ["window", "document", "HTMLElement", "Element", "Node"]) {
     globalThis[name] = name === "window" ? dom.window : dom.window[name];
   }
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
   const previousChrome = globalThis.chrome;
+  let copied;
+  Object.defineProperty(dom.window.navigator, "clipboard", { value: { writeText: async (text) => { copied = text; } } });
   const requests = [];
   let notice = "";
   const onNotify = (message) => { notice = message; };
@@ -57,30 +59,36 @@ test("sidebar requests tone correction and shows loading, success and retry stat
   assert.equal(requests.length, 1, "Duplicate submissions are suppressed");
   assert.deepEqual(requests[0], {
     src: "PAGE", dst: "BACKGROUND", method: "POST", path: "/ai/tone-correction",
-    data: { vendorName: "GOOGLE", tone: "상사/외부용" },
+    data: { vendorName: "GOOGLE", tone: "상사/외부용", text: "작성한 본문" },
   });
   assert.ok(document.querySelector(".tone-spinner"));
   assert.equal(document.querySelector('button[type="submit"]').disabled, true);
   assert.equal(document.querySelector("fieldset").disabled, true);
   await act(async () => resolveRequest({ statusCode: 200, data: { text: "(톤교정)작성한 본문" } }));
-  assert.equal(document.querySelector("#tone-result"), null);
-  assert.equal(document.querySelector('button[type="submit"]').disabled, true);
-  assert.equal(document.querySelector('[role="status"]').textContent, "본문에 삽입 중입니다.");
-  await act(async () => { submit(); submit(); });
-  assert.equal(requests.length, 2, "Automatic insertion suppresses duplicate correction requests");
+  assert.equal(requests.length, 1, "Receiving a result does not insert it");
+  assert.equal(document.querySelector("#tone-result").textContent, "(톤교정)작성한 본문");
+  assert.equal(document.querySelector("#tone-source-title + p").textContent, "작성한 본문");
+  assert.equal(document.querySelector(".tone-chip-selected").textContent, "상사 / 외부용");
+  assert.equal(document.activeElement.id, "tone-applied-title");
+  await act(async () => document.querySelector(".tone-copy").click());
+  assert.equal(copied, "(톤교정)작성한 본문");
+  assert.equal(requests.length, 1);
+  const insert = () => document.querySelector(".tone-result-actions .insert-body-button").click();
+  await act(async () => { insert(); insert(); });
+  assert.equal(requests.length, 2, "Insertion only runs on an explicit click");
   assert.deepEqual(requests[1], {
     src: "PAGE", dst: "BACKGROUND", method: "PUT", path: "/editor/insert-text",
     data: { text: "(톤교정)작성한 본문" },
   });
   await act(async () => resolveRequest({ statusCode: 500, data: { msg: "작성 창 없음" } }));
   assert.equal(notice, "작성 창 없음");
-  assert.equal(document.querySelector('button[type="submit"]').disabled, false);
-  await act(async () => submit());
-  await act(async () => resolveRequest({ statusCode: 200, data: { text: "교정된 본문" } }));
-  assert.deepEqual(requests.at(-1).data, { text: "교정된 본문" });
+  assert.equal(document.querySelector(".insert-body-button").disabled, false);
+  await act(async () => insert());
   await act(async () => resolveRequest({ statusCode: 200, data: {} }));
-  assert.equal(notice, "교정 결과를 본문에 삽입했습니다.");
-  assert.equal(document.querySelector('button[type="submit"]').disabled, false);
+  assert.equal(notice, "본문에 삽입했습니다.");
+  await act(async () => document.querySelector(".tone-retry").click());
+  assert.equal(document.querySelector("#tone-text").value, "작성한 본문");
+  assert.equal(document.querySelector("#tone-result"), null);
   await act(async () => submit());
   await act(async () => resolveRequest({ statusCode: 500, data: { msg: "요청 실패" } }));
   assert.equal(notice, "요청 실패");

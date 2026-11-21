@@ -23,7 +23,7 @@
 .tone-options-list { display: flex; flex-wrap: wrap; gap: 7px 6px; padding-top: 8px; }
 .tone-option { position: relative; cursor: pointer; }
 .tone-option input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.tone-option span {
+.tone-chip {
   display: block;
   padding: 4px 8px;
   border: 1px solid #cbd2d9;
@@ -85,3 +85,43 @@
 @media (prefers-reduced-motion: reduce) {
   .tone-spinner { animation: none; }
 }
+
+.tone-applied { margin-top: 24px; }
+.tone-applied h2, .tone-result .tone-writing h2 { font-size: 14px; font-weight: 700; }
+.tone-applied h2:focus { outline: none; }
+.tone-applied .tone-chip { display: inline-block; margin-top: 8px; }
+.tone-chip.tone-chip-selected { background: #e7edff; color: #2454d6; }
+.tone-result .tone-writing { margin-top: 18px; }
+.tone-result-box {
+  min-height: 152px;
+  padding: 12px;
+  border: 1px solid #cbd2d9;
+  border-radius: 8px;
+  color: #4b586a;
+  font-size: 15px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.tone-result-text { color: #19212c; font-weight: 600; }
+.tone-result-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.tone-retry {
+  padding: 4px 0;
+  background: transparent;
+  color: #2454d6;
+  font-weight: 600;
+}
+.tone-retry:hover:enabled { text-decoration: underline; }
+.tone-result-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+.tone-result-actions .tone-copy {
+  border: 1px solid #cbd2d9;
+  background: #fff;
+  color: #4b586a;
+}
+.tone-result-actions .tone-copy:hover:enabled { background: #f4f6f8; }
