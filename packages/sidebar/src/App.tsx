@@ -21,6 +21,23 @@ function App() {
   const showTemplates = () => setShowToneCorrection(false);
   const openToneCorrection = () => setShowToneCorrection(true);
 
+  const logout = async () => {
+    try {
+      const response = await sendMessage({
+        src: "PAGE", dst: "BACKGROUND", method: "POST", path: "/auth/logout", data: {},
+      });
+      if (response?.statusCode !== 200) throw new Error("Logout failed");
+
+      authRequest.current++;
+      setShowGuestTemplates(false);
+      setShowToneCorrection(false);
+      setAuthStatus("signedOut");
+      notify("");
+    } catch {
+      notify("로그아웃하지 못했습니다. 다시 시도해주세요.");
+    }
+  };
+
   const checkAuth = useCallback(async () => {
     const request = ++authRequest.current;
     let status: Exclude<AuthStatus, "checking"> = "error";
@@ -61,6 +78,26 @@ function App() {
     }
   }, [authStatus, checkAuth, showGuestTemplates]);
 
+  useEffect(() => {
+    if (authStatus !== "authenticated") return;
+
+    let active = true;
+    async function refreshTemplates() {
+      try {
+        const response = await sendMessage({
+          src: "PAGE", dst: "BACKGROUND", method: "POST", path: "/template/refresh", data: {},
+        });
+        if (response?.statusCode === 200) return;
+      } catch {
+        // The template list can still use the local cache.
+      }
+      if (active) notify("템플릿을 새로고침하지 못했습니다.");
+    }
+
+    void refreshTemplates();
+    return () => { active = false; };
+  }, [authStatus, notify]);
+
   return (
     <EditorStatusProvider>
       <div className="sidebar-shell">
@@ -73,6 +110,7 @@ function App() {
               onNotify={notify}
               onOpenToneCorrection={openToneCorrection}
               onShowTemplates={showTemplates}
+              onLogout={authStatus === "authenticated" ? logout : undefined}
             />
           ) : authStatus === "error" ? (
             <section>

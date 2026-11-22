@@ -31,6 +31,12 @@ const deleteOne = (vendor: AuthVendor): boolean => {
   return deleted;
 };
 
+const deleteAll = () => {
+  if (!tokens.size) return;
+  for (const vendor of tokens.keys()) remove(vendor);
+  notifyAuthChanged();
+};
+
 const read = (vendor: AuthVendor): AuthToken | null => {
   const stored = tokens.get(vendor);
   const expiresAt = expirations.get(vendor);
@@ -74,4 +80,4 @@ const readLatest = (): AuthToken | null => {
   return null;
 };
 
-export const repository = { read, readLatest, update: write, deleteOne };
+export const repository = { read, readLatest, update: write, deleteOne, deleteAll };

@@ -47,4 +47,4 @@ const update = (input: unknown) => {
 const deleteOne = (vendor: unknown) =>
   repository.deleteOne(parseVendor(vendor));
 
-export const service = { read, readLatest: repository.readLatest, update, deleteOne };
+export const service = { read, readLatest: repository.readLatest, update, deleteOne, deleteAll: repository.deleteAll };

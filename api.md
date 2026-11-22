@@ -83,6 +83,8 @@ BACKGROUND 최상위 라우터에서 `/auth/`, `/template/`, `/editor/`, `/ai/` 
 
 사이드바 PAGE에서 `GET /auth/status`를 호출하면 `200 { authenticated: boolean }`을 반환합니다. 유효한 토큰이 하나라도 있으면 `authenticated`는 `true`입니다.
 
+사이드바 PAGE에서 `POST /auth/logout`을 `data: {}`로 호출하면 확장 프로그램에 저장된 모든 인증 토큰을 삭제하고 `200 { authenticated: false }`를 반환합니다.
+
 토큰 CRUD 경로는 `/auth/token`이며 PAGE만 호출할 수 있습니다. `dst`는 `BACKGROUND`입니다.
 
 | 메서드 | 요청 `data`                     | 성공 응답 `data`       | 추가 오류                     |

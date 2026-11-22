@@ -104,8 +104,63 @@ button {
 .template-brand {
   width: 24px;
   height: 24px;
-  margin-inline-end: 8px;
   object-fit: contain;
+}
+.profile-menu {
+  position: relative;
+  margin-inline-end: 4px;
+}
+.profile-menu-trigger {
+  padding: 4px;
+  border-radius: 50%;
+}
+.profile-menu-trigger[aria-expanded="true"] {
+  position: relative;
+  z-index: 3;
+}
+.profile-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  background: #19212c38;
+}
+.profile-menu-panel {
+  position: absolute;
+  z-index: 3;
+  top: calc(100% + 4px);
+  inset-inline-end: 0;
+  width: min(212px, calc(100vw - 40px));
+  padding: 8px;
+  border: 1px solid #2454d6;
+  border-radius: 8px;
+  background: #fff;
+}
+.profile-menu-panel a,
+.profile-menu-panel button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font-size: 14px;
+  text-decoration: none;
+}
+.profile-menu-panel button {
+  color: #4b586a;
+}
+.profile-menu-panel a:hover,
+.profile-menu-panel button:hover:enabled {
+  background: #f4f6f8;
+}
+.profile-menu-panel svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 .search-field {
   display: flex;

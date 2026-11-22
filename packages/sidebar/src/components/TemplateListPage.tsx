@@ -6,15 +6,18 @@ import { sendMessage } from "../common/message-bus";
 import { pageConfig } from "../config";
 import EditorStatusTestPanel from "./EditorStatusTestPanel";
 import TemplateEmptyState from "./TemplateEmptyState";
+import ProfileMenu from "./ProfileMenu";
 import { EditorStatusContext } from "../context/editorStatusContext";
 import type { Template } from "../core/data-types";
 
 function TemplateListPage({
   onOpenToneCorrection,
   onNotify: setNotice,
+  onLogout,
 }: {
   onOpenToneCorrection: () => void;
   onNotify: (message: string) => void;
+  onLogout?: () => Promise<void>;
 }) {
   const editorState = useContext(EditorStatusContext);
   const isEditorEditable = Object.values(editorState?.statuses ?? {}).some(
@@ -164,7 +167,7 @@ function TemplateListPage({
       aria-busy={loading}>
       <header className="template-heading">
         <h1>내 템플릿</h1>
-        <img className="template-brand" src="./favicon.svg" alt="" />
+        <ProfileMenu onLogout={onLogout} />
       </header>
       {!noTemplates && (
         <div className="search-field">

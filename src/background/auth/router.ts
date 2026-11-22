@@ -17,6 +17,11 @@ export async function router(
 
   const vendor = req.data && typeof req.data === "object" && "vendor" in req.data ? req.data.vendor : undefined;
   try {
+    if (pageSender && req.path === "/auth/logout" && req.method === "POST") {
+      service.deleteAll();
+      return { statusCode: 200, data: { authenticated: false } };
+    }
+
     if (req.path === "/auth/status" && req.method === "GET") {
       return {
         statusCode: 200,

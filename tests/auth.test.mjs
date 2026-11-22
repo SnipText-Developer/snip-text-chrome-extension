@@ -122,3 +122,28 @@ test("dashboard token changes notify open sidebars without including token data"
   assert.deepEqual(notifications, [notification, notification]);
   assert.deepEqual((await router(status, sender)).data, { authenticated: false });
 });
+
+test("sidebar logout clears all vendors and notifies other sidebars once", async (t) => {
+  const notifications = [];
+  chrome.runtime.sendMessage = async (message) => { notifications.push(message); };
+  t.after(() => {
+    delete chrome.runtime.sendMessage;
+    service.deleteOne("GOOGLE");
+    service.deleteOne("NAVER");
+  });
+  const logout = { src: "PAGE", dst: "BACKGROUND", method: "POST", path: "/auth/logout", data: {} };
+  for (const vendor of ["GOOGLE", "NAVER"]) {
+    service.update({ vendor, token: "test-token" });
+  }
+  notifications.length = 0;
+
+  assert.equal(await router(logout, { ...sender, tab: { id: 1 } }), undefined);
+  assert.ok(service.readLatest());
+  assert.deepEqual(await router(logout, sender), { statusCode: 200, data: { authenticated: false } });
+  assert.equal(service.read("GOOGLE"), null);
+  assert.equal(service.read("NAVER"), null);
+  assert.equal((await router(logout, sender)).statusCode, 200);
+  assert.deepEqual(notifications, [
+    { src: "BACKGROUND", dst: "PAGE", method: "NOTIFY", path: "/auth/status", data: {} },
+  ]);
+});

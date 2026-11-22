@@ -6,6 +6,7 @@ interface SidebarContentProps {
   onNotify: (message: string) => void;
   onOpenToneCorrection: () => void;
   onShowTemplates: () => void;
+  onLogout?: () => Promise<void>;
 }
 
 export default function SidebarContent({
@@ -13,12 +14,13 @@ export default function SidebarContent({
   onNotify,
   onOpenToneCorrection,
   onShowTemplates,
+  onLogout,
 }: SidebarContentProps) {
   if (showToneCorrection) {
     return <ToneCorrectionPage onNotify={onNotify} onClose={onShowTemplates} />;
   }
 
   return (
-    <TemplateListPage onNotify={onNotify} onOpenToneCorrection={onOpenToneCorrection} />
+    <TemplateListPage onNotify={onNotify} onOpenToneCorrection={onOpenToneCorrection} onLogout={onLogout} />
   );
 }
