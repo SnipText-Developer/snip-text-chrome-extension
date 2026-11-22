@@ -148,6 +148,7 @@ export function useMiniPopup(selector: string, getTemplates: StartPopupOptions["
           `${template.title} ${template.shortcut} ${template.content}`
             .normalize("NFC").toLocaleLowerCase().includes(match.query),
         ) : [...result].sort((a, b) => (Date.parse(b.lastUsedAt) || 0) - (Date.parse(a.lastUsedAt) || 0));
+        templates.reverse();
         publish({ phase: "list", templates, active: searching ? 0 : -1, searching });
       } catch {
         if (disposed || id !== requestId) return;

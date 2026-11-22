@@ -1,29 +1,10 @@
-import { listenMessage } from "../common/message-bus";
+import { listenExternalMessage, listenMessage } from "../common/message-bus";
 import type { MessageRequest, MessageResponse } from "../core/message-types";
 import { router as authRouter } from "./auth/router";
 import { router as editorRouter } from "./editor/router/router";
 import { router as templateRouter } from "./template/router";
 import { router as aiRouter } from "./ai/router";
-
-import { apiConfig } from "../config/api";
-import { service as templateService } from "./template/service";
-
-let templatesReady: Promise<void> | undefined;
-
-function initializeTemplates(): Promise<void> {
-  return templatesReady ??= templateService.syncTemplates(
-    apiConfig.templatesUrl, apiConfig.testDashboardOrigin,
-  ).catch(async (error: unknown) => {
-    try {
-      console.warn("템플릿 초기 조회에 실패하여 로컬 템플릿을 사용합니다.", error);
-      if (apiConfig.testDashboardOrigin && new URL(apiConfig.templatesUrl).hostname === "localhost") {
-        await templateService.seedTestTemplates();
-      }
-    } finally {
-      templatesReady = undefined;
-    }
-  });
-}
+import { routeDashboardMessage } from "./dashboard/router";
 
 listenMessage(
   async (
@@ -37,7 +18,7 @@ listenMessage(
     }
 
     if (req.path.startsWith("/template/")) {
-      return await templateRouter(req, sender, initializeTemplates);
+      return await templateRouter(req, sender);
     }
 
     if (req.path.startsWith("/editor/")) {
@@ -54,6 +35,8 @@ listenMessage(
     };
   },
 );
+
+listenExternalMessage(routeDashboardMessage);
 
 chrome.action.onClicked.addListener(async (tab) => {
   if (tab.id) {

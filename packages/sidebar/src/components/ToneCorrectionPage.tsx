@@ -4,7 +4,7 @@ import InsertBodyButton from "./InsertBodyButton";
 import { sendMessage } from "../common/message-bus";
 import "./ToneCorrectionPage.css";
 
-const tones = ["상사/외부용", "보고/공문용", "마케팅/설득", "공지/안내", "부드러운 존댓말", "편한 반말", "감성/에세이"];
+const tones = ["상사/외부용", "보고/공문용", "마케팅/설득", "공지/안내", "부드러운 존댓말", "편한 반말"];
 
 interface CorrectionResult {
   source: string;

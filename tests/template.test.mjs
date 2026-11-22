@@ -2,11 +2,19 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { moduleUrl } from "./module-url.mjs";
 
+globalThis.__AUTH_TOKEN_ENCRYPTION_KEY_HEX__ = "11".repeat(32);
+
+const { apiConfig } = await import(moduleUrl("../src/config/api.ts"));
+apiConfig.templatesUrl = "";
+
 const senderUrl = moduleUrl("../src/background/common/message-sender.ts");
 const repositoryUrl = moduleUrl("../src/background/template/repository.ts");
 const serviceUrl = moduleUrl("../src/background/template/service.ts", { '"./repository"': JSON.stringify(repositoryUrl) });
 const routerUrl = moduleUrl("../src/background/template/router.ts", { '"./service"': JSON.stringify(serviceUrl), '"../common/message-sender"': JSON.stringify(senderUrl) });
 const { router } = await import(routerUrl);
+const { routeDashboardMessage } = await import(moduleUrl("../src/background/dashboard/router.ts", {
+  '"../template/router"': JSON.stringify(routerUrl),
+}));
 const { repository } = await import(repositoryUrl);
 const { service } = await import(serviceUrl);
 let stored = {};
@@ -142,62 +150,95 @@ test("sync reports all invalid field paths and leaves storage unchanged", async 
   assert.deepEqual(await repository.readAll(), [template(1)]);
 });
 
-test("local API startup loads the open dashboard's RAM templates for the mini popup", async (t) => {
-  const origin = "http://localhost:3000";
-  const expected = template(12, { title: "대시보드에서 편집한 템플릿" });
+test("refresh requests fetch fresh templates and preserve the cache on failure", async (t) => {
   const originalFetch = globalThis.fetch;
-  const originalLocation = Object.getOwnPropertyDescriptor(globalThis, "location");
-  Object.defineProperty(globalThis, "location", { configurable: true, value: new URL(origin) });
+  t.after(() => { globalThis.fetch = originalFetch; apiConfig.templatesUrl = ""; });
+  const refresh = { src: "PAGE", dst: "BACKGROUND", method: "POST", path: "/template/refresh", data: {} };
+  const dashboard = { origin: "http://localhost:3000", url: "http://localhost:3000/templates", frameId: 0 };
+  assert.equal((await router(refresh, sender)).statusCode, 400);
+
+  apiConfig.templatesUrl = "http://localhost:8080/api/template";
+  stored = { "snip.templates": [template(1)] };
+  let calls = 0;
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, apiConfig.templatesUrl);
+    assert.equal(options.cache, "no-store");
+    calls++;
+    return calls === 1
+      ? Response.json([template(2)])
+      : Response.json({}, { status: 503 });
+  };
+
+  assert.equal(await router(refresh, { ...sender, id: "other" }), undefined);
+  assert.equal((await routeDashboardMessage(refresh, { ...dashboard, frameId: 1 })).statusCode, 403);
+  assert.equal(calls, 0);
+  assert.deepEqual(await router(refresh, sender), { statusCode: 200, data: { refreshed: true } });
+  assert.equal((await routeDashboardMessage(refresh, dashboard)).statusCode, 500);
+  assert.deepEqual(await repository.readAll(), [template(2)]);
+  assert.equal(calls, 2);
+});
+
+test("production template refresh uses the stored Bearer token and parses the OpenAPI response", async (t) => {
+  const { service: authService } = await import(moduleUrl("../src/background/auth/service.ts"));
+  const originalFetch = globalThis.fetch;
+  const originalUrl = apiConfig.templatesUrl;
   t.after(() => {
     globalThis.fetch = originalFetch;
-    if (originalLocation) Object.defineProperty(globalThis, "location", originalLocation);
-    else delete globalThis.location;
-    delete chrome.tabs;
-    delete chrome.scripting;
+    apiConfig.templatesUrl = originalUrl;
+    authService.deleteOne("GOOGLE");
+    authService.deleteOne("NAVER");
   });
-  stored = {};
+
+  apiConfig.templatesUrl = "https://api.sniptext.kr/api/v1/templates";
+  const request = { src: "PAGE", method: "POST", path: "/template/refresh", data: {} };
+  let requests = 0;
   globalThis.fetch = async (url, options) => {
-    if (url === "http://localhost:8080/api/template") throw new TypeError("fetch failed");
-    assert.equal(url, "/api/v1/templates");
-    assert.equal(options.headers.Authorization, "Bearer sniptext-test-token");
+    requests++;
+    assert.equal(url, apiConfig.templatesUrl);
+    assert.equal(new Headers(options.headers).get("Authorization"), "Bearer latest-access-token");
     assert.equal(options.redirect, "error");
     return Response.json({
       isSuccess: true,
-      code: "TEMPLATE200_1",
-      result: { templates: [{ ...expected, lastUsedAt: null }] },
+      result: { totalCount: 1, templates: [template(3)] },
     });
   };
-  chrome.tabs = { query: async (options) => {
-    assert.deepEqual(options, { url: origin + "/*" });
-    return [{ id: 23 }];
-  } };
-  chrome.scripting = { executeScript: async ({ target, world, args, func }) => {
-    assert.deepEqual(target, { tabId: 23 });
-    assert.equal(world, "MAIN");
-    return [{ result: await func(...args) }];
-  } };
 
-  await service.syncTemplates("http://localhost:8080/api/template", origin);
-  const response = await router(
-    { src: "CONTENT", dst: "BACKGROUND", method: "GET", path: "/template/list", data: {} },
-    { id: "extension-id", tab: { id: 4 }, url: "https://mail.google.com/" },
-  );
-  assert.deepEqual(response, {
-    statusCode: 200,
-    data: { templates: [{ ...expected, lastUsedAt: expected.createdAt }] },
-  });
-});
-
-test("development seed is available to the mini popup and preserves a saved list", async () => {
-  const request = { src: "CONTENT", dst: "BACKGROUND", method: "GET", path: "/template/list", data: {} };
-  const content = { id: "extension-id", tab: { id: 4 }, url: "https://mail.google.com/" };
-  stored = {};
-  const response = await router(request, content, service.seedTestTemplates);
-  assert.equal(response.statusCode, 200);
-  assert.deepEqual(response.data.templates.map(({ shortcut }) => shortcut), ["/감사", "/일정", "/견적"]);
-  for (const templates of [[], [template(9)]]) {
-    stored = { "snip.templates": templates };
-    await service.seedTestTemplates();
-    assert.deepEqual(await repository.readAll(), templates);
+  assert.equal((await router(request, sender)).statusCode, 401);
+  assert.equal(requests, 0);
+  authService.update({ vendor: "GOOGLE", token: "older-access-token" });
+  authService.update({ vendor: "NAVER", token: "latest-access-token" });
+  stored = { "snip.templates": [template(1)] };
+  const listRequest = { src: "PAGE", method: "GET", path: "/template/list", data: {} };
+  const contentSender = { id: sender.id, tab: { id: 1 }, url: "https://mail.google.com/mail/u/0/" };
+  for (const [src, caller] of [["PAGE", sender], ["CONTENT", contentSender]]) {
+    assert.deepEqual(await router({ ...listRequest, src }, caller), {
+      statusCode: 200, data: { templates: [template(1)] },
+    });
   }
+  assert.equal(requests, 0);
+  assert.equal((await router(request, sender)).statusCode, 200);
+  assert.equal(requests, 1);
+  assert.deepEqual(await repository.readAll(), [template(3)]);
+
+  globalThis.fetch = async () => Response.json({ isSuccess: false }, { status: 401 });
+  assert.equal((await router(request, sender)).statusCode, 401);
+  assert.deepEqual(await repository.readAll(), [template(3)]);
+
+  globalThis.fetch = async (_url, options) => {
+    assert.equal(new Headers(options.headers).has("Authorization"), false);
+    return Response.json([template(3)]);
+  };
+  await service.syncTemplates("https://api.example.com/templates");
+
+  const edit = template(3, { title: "수정 제목" });
+  const updated = { ...edit, editedAt: "2026-10-08T09:12:00+09:00" };
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, apiConfig.templatesUrl + "/3");
+    assert.equal(options.method, "PUT");
+    assert.equal(options.headers.get("Authorization"), "Bearer latest-access-token");
+    assert.deepEqual(JSON.parse(options.body), { title: edit.title, shortcut: edit.shortcut, content: edit.content });
+    return Response.json({ isSuccess: true, result: updated });
+  };
+  assert.deepEqual(await replace(edit), { statusCode: 200, data: { template: updated } });
+  assert.deepEqual(await repository.readAll(), [updated]);
 });

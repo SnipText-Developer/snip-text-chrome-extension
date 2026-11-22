@@ -52,13 +52,13 @@ const readAll = async (): Promise<Template[]> => {
 // Serialize read-modify-write operations to preserve concurrent changes.
 let pending: Promise<unknown> = Promise.resolve();
 
-const replace = (template: Template): Promise<Template | null> => {
+const replace = (template: Template, insertIfMissing = false): Promise<Template | null> => {
   const operation = pending.then(async () => {
     const templates = await readAll();
     const index = templates.findIndex(
       (item) => item.templateId === template.templateId,
     );
-    if (index === -1) return null;
+    if (index === -1 && !insertIfMissing) return null;
     if (
       templates.some(
         (item) =>
@@ -69,7 +69,8 @@ const replace = (template: Template): Promise<Template | null> => {
       throw new DuplicateShortcutError();
     }
     const updated = { ...template, variables: [...template.variables] };
-    templates[index] = updated;
+    if (index === -1) templates.push(updated);
+    else templates[index] = updated;
     await chrome.storage.local.set({ [STORAGE_KEY]: templates });
     return { ...updated, variables: [...updated.variables] };
   });
@@ -87,14 +88,4 @@ const replaceAll = (templates: Template[]): Promise<void> => {
   return operation;
 };
 
-const seedIfMissing = (templates: Template[]): Promise<void> => {
-  const operation = pending.then(async () => {
-    const stored = await chrome.storage.local.get(STORAGE_KEY);
-    if (stored[STORAGE_KEY] !== undefined) return;
-    await chrome.storage.local.set({ [STORAGE_KEY]: templates });
-  });
-  pending = operation.catch(() => {});
-  return operation;
-};
-
-export const repository = { readAll, replace, replaceAll, seedIfMissing };
+export const repository = { readAll, replace, replaceAll };

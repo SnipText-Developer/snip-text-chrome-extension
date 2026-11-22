@@ -1,5 +1,5 @@
-import { testTemplates } from "./test-templates";
-import { readDashboardTestTemplates } from "./test-dashboard";
+import { apiConfig, snipTextApiOrigin } from "../../config/api";
+import { requestApi } from "../common/api-client";
 import { validateTemplateApiResponse } from "./api-validation";
 import type { Template } from "../../core/data-types";
 import { DuplicateShortcutError, repository } from "./repository";
@@ -110,36 +110,47 @@ const parseTemplate = (input: unknown): Template => {
   return template;
 };
 
+// Serialize remote reads and edits so an older list cannot overwrite an edit.
+let pendingSync: Promise<unknown> = Promise.resolve();
+
+function enqueue<T>(operation: () => Promise<T>): Promise<T> {
+  const result = pendingSync.then(operation);
+  pendingSync = result.catch(() => {});
+  return result;
+}
+
 const replaceTemplate = async (input: unknown): Promise<Template | null> => {
   const template = parseTemplate(input);
-  try {
-    return await repository.replace(template);
-  } catch (error) {
-    if (error instanceof DuplicateShortcutError) {
-      throw new TemplateValidationError("이미 사용 중인 단축어입니다.");
+  const url = apiConfig.templatesUrl;
+  return enqueue(async () => {
+    try {
+      if (url.trim() && new URL(url).origin === snipTextApiOrigin) {
+        const { templateId, title, shortcut, content } = template;
+        const result = await requestApi(`${url.replace(/\/$/, "")}/${templateId}`, "PUT", {
+          title, shortcut, content,
+        });
+        const [updated] = validateTemplateApiResponse([result]);
+        if (updated.templateId !== templateId) throw new Error("템플릿 ID가 일치하지 않습니다.");
+        await repository.replace(updated, true);
+        return updated;
+      }
+      return await repository.replace(template);
+    } catch (error) {
+      if (error instanceof DuplicateShortcutError) {
+        throw new TemplateValidationError("이미 사용 중인 단축어입니다.");
+      }
+      throw error;
     }
-    throw error;
-  }
+  });
 };
 
-async function fetchTemplates(url: string): Promise<Template[]> {
-  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
-  if (!response.ok) throw new Error(`템플릿 API 요청 실패: ${response.status}`);
-  return validateTemplateApiResponse(await response.json());
-}
-
-async function syncTemplates(url: string, testDashboardOrigin = ""): Promise<void> {
-  if (!url) return;
-  const templates = await fetchTemplates(url).catch(async (error: unknown) => {
-    // Only the local development API may fall back to test data.
-    if (new URL(url).hostname !== "localhost" || !testDashboardOrigin) throw error;
-    const data = await readDashboardTestTemplates(testDashboardOrigin);
-    if (data === null) throw error;
-    return validateTemplateApiResponse(data);
+async function syncTemplates(url = apiConfig.templatesUrl): Promise<boolean> {
+  if (!url.trim()) return false;
+  await enqueue(async () => {
+    const templates = validateTemplateApiResponse(await requestApi(url));
+    await repository.replaceAll(templates);
   });
-  await repository.replaceAll(templates);
+  return true;
 }
 
-const seedTestTemplates = () => repository.seedIfMissing(testTemplates);
-
-export const service = { listTemplates, replaceTemplate, syncTemplates, seedTestTemplates };
+export const service = { listTemplates, replaceTemplate, syncTemplates };

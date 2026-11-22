@@ -2,6 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { moduleUrl } from "./module-url.mjs";
 
+const { apiConfig } = await import(moduleUrl("../src/config/api.ts"));
+apiConfig.templatesUrl = "";
+
 const { getContentVendor } = await import(moduleUrl("../src/background/common/message-sender.ts"));
 const { router: templateRouter } = await import(moduleUrl("../src/background/template/router.ts"));
 const { vendors } = await import(moduleUrl("../src/config/vendors.ts"));

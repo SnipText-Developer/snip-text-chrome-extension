@@ -46,8 +46,8 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   window.Range.prototype.getBoundingClientRect = () => ({ left: 10, top: 10, bottom: 30, height: 20 });
   window.HTMLElement.prototype.scrollIntoView = () => {};
   const templates = [
-    { templateId: 1, title: "본문", shortcut: "/1", content: "일반 본문", variables: [] },
-    { templateId: 2, title: "견적 안내", shortcut: "/견적", content: "{{이름}}님 {{금액}}원", variables: ["이름", "금액"] },
+    { templateId: 2, title: "견적 안내", shortcut: "/견적", content: "{{이름}}님 {{금액}}원", variables: ["이름", "금액"], lastUsedAt: "2026-10-02T00:00:00Z" },
+    { templateId: 1, title: "본문", shortcut: "/1", content: "일반 본문", variables: [], lastUsedAt: "2026-10-01T00:00:00Z" },
   ];
   let deferred;
   let holdResponse = false;
@@ -137,6 +137,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   assert.equal(host.dataset.open, "true");
   await open();
   assert.equal(host.querySelectorAll('[role="option"]').length, 2);
+  assert.match(host.querySelector('[role="option"]').textContent, /일반 본문/);
   assert.equal(host.querySelector("header").textContent, "최근 사용");
   assert.equal(host.querySelector(".popup-footer a").href, "http://localhost:3000/templates/new");
   assert.ok(document.activeElement === editor);
@@ -580,7 +581,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
     });
     assert.match(host.querySelector('[role="option"]').textContent, /톤교정/);
     await act(async () => { key(editor, "Enter"); });
-    assert.equal(host.querySelectorAll('[role="option"]').length, 7);
+    assert.equal(host.querySelectorAll('[role="option"]').length, 6);
     assert.equal(host.querySelectorAll('.popup-group > .popup').length, 1);
     assert.equal(document.activeElement === host.querySelector('.tone-menu [role="option"]'), true, "Enter moves focus into the tone menu");
   }
@@ -602,7 +603,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
     assert.equal(document.activeElement.textContent, title);
   }
   await act(async () => { key(document.activeElement, "ArrowUp"); });
-  assert.equal(document.activeElement.textContent, "감성/에세이");
+  assert.equal(document.activeElement.textContent, "공지/안내");
   assert.equal(window.getComputedStyle(document.activeElement).backgroundColor, "rgb(222, 237, 252)", "Keyboard selection remains visibly highlighted in the tone menu");
 
   assert.notEqual(host.style.display, "none");
@@ -612,7 +613,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   await act(async () => host.querySelector('[role="option"]').click());
   assert.match(host.querySelector('[role="status"]').textContent, /톤 교정 실패/);
   failTone = false;
-  await act(async () => host.querySelectorAll('[role="option"]')[6].dispatchEvent(new window.Event("pointermove", { bubbles: true })));
+  await act(async () => host.querySelectorAll('[role="option"]')[5].dispatchEvent(new window.Event("pointermove", { bubbles: true })));
   await act(async () => { key(document.activeElement, "Enter"); });
   assert.equal(inserted.at(-1), "(톤교정)작성한 본문");
   assert.equal(host.style.display, "none");

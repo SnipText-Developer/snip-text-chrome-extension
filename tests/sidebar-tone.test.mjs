@@ -40,7 +40,7 @@ test("sidebar previews tone correction and inserts or copies only on demand", as
   assert.equal(document.querySelector("#tone-text").value, "작성한 본문");
   assert.equal(document.querySelector("#tone-text").readOnly, false);
   assert.equal(document.querySelector('input[type="radio"]').checked, true);
-  assert.equal(document.querySelectorAll('input[type="radio"]').length, 7);
+  assert.equal(document.querySelectorAll('input[type="radio"]').length, 6);
   assert.deepEqual([...document.querySelectorAll(".tone-counts dd")].map((node) => node.textContent), ["6자", "5자"]);
   const chips = [...document.querySelectorAll(".tone-option")];
   chips.forEach((chip, index) => {
