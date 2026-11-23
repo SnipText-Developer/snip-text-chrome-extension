@@ -41,5 +41,5 @@
   "content_security_policy": {
     "extension_pages": "default-src 'self'; script-src 'self'; object-src 'self'; style-src 'self' https://cdnjs.cloudflare.com/ajax/libs/pretendard/1.3.9/static/pretendard.min.css; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self' https://api.sniptext.kr"
   },
-  "key": "__I8N-Qz2wiabRa57E4TIGfxaoWNdlvHc7tw9nOHKP4"
+  "key": "I8NWQz2wiabRa57E4TIGfxaoWNdlvHc7tw9nOHKP4XX"
 }
