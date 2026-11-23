@@ -3,7 +3,7 @@ const pretendardStylesheet =
 
 export function ensurePretendardFont(document: Document): void {
   let hasPretendard = false;
-  document.fonts.forEach((font) => {
+  document.fonts?.forEach((font) => {
     if (font.family.replace(/["']/g, "").trim().toLowerCase() === "pretendard") {
       hasPretendard = true;
     }

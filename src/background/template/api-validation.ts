@@ -25,8 +25,11 @@ export const validateTemplateApiResponse = (input: unknown): Template[] => {
   const add = (path: string, expected: string, value: unknown) => {
     issues.push({ path, expected, received: typeOf(value) });
   };
-  const items = Array.isArray(input) ? input
-    : input && typeof input === "object" && "templates" in input ? input.templates : undefined;
+  const payload = input && typeof input === "object" && "isSuccess" in input
+    ? input.isSuccess === true && "result" in input ? input.result : undefined
+    : input;
+  const items = Array.isArray(payload) ? payload
+    : payload && typeof payload === "object" && "templates" in payload ? payload.templates : undefined;
   if (!Array.isArray(items)) {
     throw new TemplateApiValidationError([{ path: "$", expected: "템플릿 배열 또는 { templates: 배열 }", received: typeOf(input) }]);
   }
@@ -77,7 +80,7 @@ export const validateTemplateApiResponse = (input: unknown): Template[] => {
     }
     const dates: Record<string, unknown> = {};
     for (const field of ["createdAt", "editedAt", "lastUsedAt"] as const) {
-      const value = dto[field] === undefined
+      const value = dto[field] === undefined || (field === "lastUsedAt" && dto[field] === null)
         ? (field === "createdAt" ? "1970-01-01T00:00:00.000Z" : dto.createdAt ?? "1970-01-01T00:00:00.000Z")
         : dto[field];
       dates[field] = value;

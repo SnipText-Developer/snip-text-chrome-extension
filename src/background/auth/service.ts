@@ -4,7 +4,7 @@ import type { AuthToken, AuthVendor } from "./types";
 
 export class AuthError extends Error {}
 
-const MAX_AGE_MS = 5 * 60 * 1000;
+const MIN_AGE_MS = 5 * 60 * 1000;
 
 function parseVendor(value: unknown): AuthVendor {
   if (!isVendorName(value)) {
@@ -32,9 +32,9 @@ function parseToken(input: unknown): { value: AuthToken; expiresAt: number } {
     throw new AuthError("토큰 만료 시각은 현재보다 미래여야 합니다.");
   return {
     value: { vendor, token: data.token },
-    expiresAt: Math.min(
-      (data.expiresAt as number) ?? now + MAX_AGE_MS,
-      now + MAX_AGE_MS,
+    expiresAt: Math.max(
+      (data.expiresAt as number) ?? now + MIN_AGE_MS,
+      now + MIN_AGE_MS,
     ),
   };
 }
@@ -47,4 +47,4 @@ const update = (input: unknown) => {
 const deleteOne = (vendor: unknown) =>
   repository.deleteOne(parseVendor(vendor));
 
-export const service = { read, update, deleteOne };
+export const service = { read, readLatest: repository.readLatest, update, deleteOne, deleteAll: repository.deleteAll };

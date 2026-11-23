@@ -2,7 +2,7 @@ import { getVendorByUrl } from "../../config/vendors";
 import type { MessageRequest } from "../../core/message-types";
 
 export function isPageSender(
-  req: MessageRequest,
+  req: Partial<Pick<MessageRequest, "src">>,
   sender: chrome.runtime.MessageSender,
 ) {
   return (
@@ -10,6 +10,15 @@ export function isPageSender(
     sender.id === chrome.runtime.id &&
     !sender.tab &&
     sender.url === chrome.runtime.getURL("src/page/index.html")
+  );
+}
+
+const dashboardOrigins = new Set(["https://sniptext.kr", "http://localhost:3000"]);
+
+export function isDashboardSender(sender: chrome.runtime.MessageSender) {
+  return (
+    !sender.id && sender.frameId === 0 && !!sender.origin &&
+    dashboardOrigins.has(sender.origin) && !!sender.url?.startsWith(sender.origin + "/")
   );
 }
 
@@ -37,7 +46,7 @@ export function getContentVendor(sender: chrome.runtime.MessageSender) {
         return null;
       return vendor.id;
     }
-    // Only blank/srcdoc subframes may inherit an allowed mail origin.
+    // Only blank subframes may inherit an allowed mail origin.
     if (
       !sender.frameId ||
       url.protocol !== "about:" ||
@@ -51,7 +60,7 @@ export function getContentVendor(sender: chrome.runtime.MessageSender) {
 }
 
 export function isContentSender(
-  req: MessageRequest,
+  req: Partial<Pick<MessageRequest, "src">>,
   sender: chrome.runtime.MessageSender,
 ) {
   return req.src === "CONTENT" && getContentVendor(sender) !== null;

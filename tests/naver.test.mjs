@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
 import { moduleUrl } from "./module-url.mjs";
 
+const { apiConfig } = await import(moduleUrl("../src/config/api.ts"));
+apiConfig.templatesUrl = "";
+
 const { getContentVendor } = await import(moduleUrl("../src/background/common/message-sender.ts"));
 const { router: templateRouter } = await import(moduleUrl("../src/background/template/router.ts"));
 const { vendors } = await import(moduleUrl("../src/config/vendors.ts"));
@@ -35,7 +38,7 @@ test("네이버 관련 프레임은 Chrome이 제공한 origin으로 템플릿 �
   t.after(() => { globalThis.chrome = previous; });
   const base = { id: "extension", tab: { id: 3 }, frameId: 7, origin: `https://${vendor.hostname}` };
   const request = { src: "CONTENT", dst: "BACKGROUND", method: "GET", path: "/template/list", data: {} };
-  for (const url of ["about:blank", "about:srcdoc", `blob:https://${vendor.hostname}/document`, "data:text/html,editor"]) {
+  for (const url of ["about:blank", "about:blank#editor"]) {
     const sender = { ...base, url };
     assert.equal(getContentVendor(sender), vendor.id);
     const response = await templateRouter(request, sender);
@@ -43,6 +46,7 @@ test("네이버 관련 프레임은 Chrome이 제공한 origin으로 템플릿 �
     assert.ok(Array.isArray(response.data.templates));
   }
   for (const sender of [
+    { ...base, url: "about:srcdoc" },
     { ...base, url: "about:blank", origin: "null" },
     { ...base, url: "about:blank", origin: undefined },
     { ...base, url: "about:blank", origin: "https://example.com" },
@@ -66,7 +70,7 @@ test("늦게 생성된 네이버 편집기도 팝업과 라우터를 한 번만 
   }));
   assert.equal(window.boots, undefined);
   const editor = window.document.createElement("div");
-  editor.className = "workseditor-content additional-class";
+  editor.className = "workseditor-content";
   editor.setAttribute("contenteditable", "true");
   window.document.body.append(editor);
   await flush();

@@ -6,6 +6,8 @@ import {
   type OptionListHandlers, type TemplateInputHandlers,
 } from "./controls";
 
+export { focusVariableInput } from "./controls";
+export { ensurePretendardFont } from "./font";
 export { createPopupHost } from "./popup";
 export { preserveEditorSelection, preventDefault } from "./events";
 

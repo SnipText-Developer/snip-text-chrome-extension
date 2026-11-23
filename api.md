@@ -58,7 +58,7 @@ BACKGROUND는 `req.src`뿐 아니라 실제 `chrome.runtime.MessageSender`를 �
 | 호출자  | 허용 조건                                                                                                                                                                                                                                               |
 | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | PAGE    | `src: "PAGE"`, 같은 확장 프로그램 ID, `sender.tab` 없음, `sender.url === chrome.runtime.getURL("src/page/index.html")`                                                                                                                                  |
-| CONTENT | `src: "CONTENT"`, 같은 확장 프로그램 ID, 탭 ID 존재, HTTPS의 `mail.google.com` 또는 `mail.naver.com`에서 보낸 메시지. `about:blank`·`about:srcdoc`은 `frameId > 0`인 하위 프레임이며 Chrome의 `sender.origin`이 등록된 HTTPS 메일 도메인인 경우만 허용합니다. `blob:`·`data:`·`filesystem:`은 거부 |
+| CONTENT | `src: "CONTENT"`, 같은 확장 프로그램 ID, 탭 ID 존재, HTTPS의 `mail.google.com` 또는 `mail.naver.com`에서 보낸 메시지. `about:blank`는 `frameId > 0`인 하위 프레임이며 Chrome의 `sender.origin`이 등록된 HTTPS 메일 도메인인 경우만 허용합니다. `about:srcdoc`·`blob:`·`data:`·`filesystem:`은 거부 |
 
 BACKGROUND 수신 메시지는 `dst: "BACKGROUND"`여야 합니다. 권한이 없는 요청이나 각 라우터가 지원하지 않는 메서드·경로 조합은 응답 없이 무시합니다. 일괄적으로 `401`이나 `403`을 반환하지 않습니다.
 
@@ -81,7 +81,11 @@ BACKGROUND 최상위 라우터에서 `/auth/`, `/template/`, `/editor/`, `/ai/` 
 
 ## BACKGROUND: 인증 토큰
 
-경로는 모두 `/auth/token`이며 PAGE만 호출할 수 있습니다. `dst`는 `BACKGROUND`입니다.
+사이드바 PAGE에서 `GET /auth/status`를 호출하면 `200 { authenticated: boolean }`을 반환합니다. 유효한 토큰이 하나라도 있으면 `authenticated`는 `true`입니다.
+
+사이드바 PAGE에서 `POST /auth/logout`을 `data: {}`로 호출하면 확장 프로그램에 저장된 모든 인증 토큰을 삭제하고 `200 { authenticated: false }`를 반환합니다.
+
+토큰 CRUD 경로는 `/auth/token`이며 PAGE만 호출할 수 있습니다. `dst`는 `BACKGROUND`입니다.
 
 | 메서드 | 요청 `data`                     | 성공 응답 `data`       | 추가 오류                     |
 | ------ | ------------------------------- | ---------------------- | ----------------------------- |
@@ -107,6 +111,8 @@ PUT은 토큰이 없거나 만료되었으면 새로 생성하고, 유효한 토
 
 ### GET `/template/list`
 
+저장된 로컬 목록을 반환합니다. 운영 템플릿 목록 API는 `POST /template/refresh`에서 호출합니다.
+
 - 호출자: PAGE 또는 CONTENT
 - 목적지: BACKGROUND
 - 요청 `data`: `{}`
@@ -122,6 +128,22 @@ PUT은 토큰이 없거나 만료되었으면 새로 생성하고, 유효한 토
 }
 ```
 
+### POST `/template/refresh`
+
+사이드바 PAGE 또는 허용된 대시보드에서 호출하면 설정된 템플릿 API의 최신 목록으로 로컬 목록을 교체합니다. 성공 시 `200 { refreshed: true }`, API 주소가 비어 있으면 `400`, 인증에 실패하면 `401`, 응답 검증이나 저장에 실패하면 `500`을 반환합니다. 조회 또는 검증이 실패하면 기존 로컬 목록을 사용합니다.
+
+```json
+{
+  "src": "PAGE",
+  "dst": "BACKGROUND",
+  "method": "POST",
+  "path": "/template/refresh",
+  "data": {}
+}
+```
+
+대시보드에서는 `src` 없이 위 메시지를 `chrome.runtime.sendMessage(extensionId, message, callback)`로 보냅니다.
+
 ### PUT `/template/replace`
 
 - 호출자: PAGE
@@ -130,7 +152,7 @@ PUT은 토큰이 없거나 만료되었으면 새로 생성하고, 유효한 토
 - 성공: `200`, `{ template: Template }`
 - 대상 없음: `404`, `{ "msg": "템플릿을 찾을 수 없습니다." }`
 
-부분 수정 API가 아닙니다. `templateId`는 양의 안전한 정수여야 합니다. `title`, `shortcut`, `content`는 공백만 있는 값을 허용하지 않습니다. 제목과 단축어는 양끝 공백을 제거하고 본문은 원문을 유지합니다. 단축어는 `/`로 시작하고 뒤에 공백이나 추가 `/`가 없는 한 글자 이상의 문자열이어야 하며, 다른 템플릿과 중복될 수 없습니다.
+운영 환경에서는 `PUT /api/v1/templates/{templateId}`에 `title`, `shortcut`, `content`를 보내고 서버 응답을 캐시에 반영합니다. `templateId`는 양의 안전한 정수여야 합니다. `title`, `shortcut`, `content`는 공백만 있는 값을 허용하지 않습니다. 제목과 단축어는 양끝 공백을 제거하고 본문은 원문을 유지합니다. 단축어는 `/`로 시작하고 뒤에 공백이나 추가 `/`가 없는 한 글자 이상의 문자열이어야 하며, 다른 템플릿과 중복될 수 없습니다.
 
 `variables`는 중복·빈 값·양끝 공백이 없는 문자열 배열이며 본문의 `{{변수}}` 목록과 일치해야 합니다. 날짜 3개 필드는 모두 시간대가 포함된 ISO 8601 문자열이어야 합니다. 정의되지 않은 추가 필드는 허용하지 않습니다. 검증 실패는 `400`입니다.
 
@@ -300,20 +322,20 @@ CR 단독, 탭, 기존 NBSP는 그대로 유지합니다. Range 삽입 중 예�
 
 정상 수신 시 `200`, `{ "received": true }`를 반환합니다. 상태 객체가 잘못되면 `400`, `{ "msg": "잘못된 에디터 상태입니다." }`를 반환합니다. 알림의 출처·목적지·메서드·경로가 다르면 무시합니다. sidebar는 최초 `/editor/status` 조회와 실시간 알림을 함께 사용하며, 실시간 알림이 먼저 도착하면 늦게 도착한 최초 조회 결과를 적용하지 않습니다.
 
-## BACKGROUND: AI (임시)
+## BACKGROUND: AI
 
 ### POST `/ai/tone-correction`
 
 - 호출자: 기존 발신자 검증을 통과한 CONTENT 또는 PAGE
 - 목적지: BACKGROUND
 - CONTENT 요청 `data`: `{ tone: string }` (메일 서비스는 발신자에서 결정)
-- PAGE 요청 `data`: `{ vendorName: VendorName, tone: string }`
-- 성공 응답: `200`, `{ text: "(톤교정)" + 에디터본문 }`
+- PAGE 요청 `data`: `{ vendorName: VendorName, tone: string, text?: string }`. `text`를 전달하면 사이드바에서 편집한 원문을 사용합니다.
+- 성공 응답: `200`, `{ text: string }` (API가 반환한 교정 본문)
 - 문체 누락·공백 또는 잘못된 vendor: `400`
 - 빈 본문: `400`, `{ msg: "교정할 본문을 작성해주세요." }`
 - 에디터 상태 없음: `404`
 
-본문은 observer가 BACKGROUND에 전달해 저장한 에디터 상태에서 읽습니다. 요청의 `text`는 사용하지 않습니다. CONTENT 요청은 본문 끝의 `/톤`, `/톤교`, `/톤교정` 예약어와 뒤따르는 공백을 제외합니다. 현재 실제 교정 대신 본문 앞에 `(톤교정)`을 붙여 반환하며, 에디터 본문을 변경하지 않습니다. 실제 교정 API 연결 지점은 `src/background/ai/service.ts`의 TODO입니다. 라우터는 발신자 검증과 응답 변환을, 서비스는 입력 검증·본문 조회·예약어 제거·교정을 담당합니다.
+PAGE에서 `text`를 생략하거나 CONTENT에서 요청하면 observer가 BACKGROUND에 저장한 본문을 읽습니다. CONTENT 요청은 본문 끝의 `\톤`, `\톤교`, `\톤교정` 예약어와 뒤따르는 공백을 제외합니다. 백그라운드는 선택한 문체 코드와 본문을 `POST /api/v1/ai/tone-corrections`로 보내고 `result.correctedText`를 반환합니다. 에디터 본문은 사용자가 삽입을 선택할 때 변경됩니다. 라우터는 발신자 검증과 응답 변환을, 서비스는 입력 검증·본문 조회·예약어 제거·교정을 담당합니다.
 
 ### GET `/editor/text`
 
@@ -326,3 +348,28 @@ CR 단독, 탭, 기존 NBSP는 그대로 유지합니다. Range 삽입 중 예�
 - 저장된 에디터 상태 없음: `404`
 
 BACKGROUND의 에디터 서비스에서 observer가 전달해 저장한 본문을 읽어 응답합니다. CONTENT로 메시지를 다시 보내거나 활성 탭을 조회하지 않습니다. 본문은 메일 서비스별 저장 상태이므로 observer 갱신 시차가 있으며 탭·프레임별 실시간 DOM 스냅샷은 아닙니다.
+
+## 대시보드에서 백그라운드로 인증 메시지 보내기
+
+`https://sniptext.kr` 또는 `http://localhost:3000`의 최상위 페이지에서 대시보드 로그인 성공 후 호출합니다. `extensionId`는 Chrome에 설치된 Snip Text 확장 프로그램 ID입니다.
+
+```js
+chrome.runtime.sendMessage(extensionId, {
+  dst: "BACKGROUND",
+  method: "PUT",
+  path: "/auth/token",
+  data: { vendor: "GOOGLE", token: accessToken },
+}, (response) => {
+  if (chrome.runtime.lastError || response?.statusCode !== 200) {
+    // 확장 프로그램 연결 또는 토큰 등록 실패 처리
+  }
+});
+```
+
+| 메서드와 경로 | 요청 `data` | 성공 응답 `data` |
+| --- | --- | --- |
+| `GET /auth/status` | `{}` | `{ authenticated }` |
+| `PUT /auth/token` | `{ vendor, token, expiresAt? }` | `{ vendor }` |
+| `DELETE /auth/token` | `{ vendor }` | `{ deleted }` |
+
+`vendor`는 `GOOGLE` 또는 `NAVER`이며 `expiresAt`은 epoch 밀리초입니다. 저장에는 기존 토큰 만료 정책을 적용합니다.

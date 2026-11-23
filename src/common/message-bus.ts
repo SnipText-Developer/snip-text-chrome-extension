@@ -32,31 +32,33 @@ async function sendToActiveTab(
   });
 }
 
-function listenMessage(
-  callback: (
-    req: MessageRequest,
-    sender: chrome.runtime.MessageSender,
-  ) => Promise<MessageResponse | void>,
-): void {
-  const _callback = (
-    req: MessageRequest,
+type MessageHandler<Request> = (
+  req: Request,
+  sender: chrome.runtime.MessageSender,
+) => Promise<MessageResponse | void>;
+
+function createMessageListener<Request>(handler: MessageHandler<Request>) {
+  return (
+    req: Request,
     sender: chrome.runtime.MessageSender,
     sendResponse: (response: MessageResponse) => void,
-  ) => {
-    Promise.resolve().then(() => callback(req, sender)).then((res) => {
-      if (res) {
-        sendResponse(res);
-      }
+  ): true => {
+    void Promise.resolve().then(() => handler(req, sender)).then((response) => {
+      if (response) sendResponse(response);
     }).catch(() => {
       sendResponse({ statusCode: 500, data: { msg: "메시지 처리에 실패했습니다." } });
     });
 
     return true;
   };
-
-  tryCatch(() => {
-    chrome.runtime.onMessage.addListener(_callback);
-  });
 }
 
-export { sendMessage, sendToActiveTab, listenMessage };
+function listenMessage(handler: MessageHandler<MessageRequest>): void {
+  tryCatch(() => chrome.runtime.onMessage.addListener(createMessageListener(handler)));
+}
+
+function listenExternalMessage(handler: MessageHandler<unknown>): void {
+  chrome.runtime.onMessageExternal.addListener(createMessageListener(handler));
+}
+
+export { sendMessage, sendToActiveTab, listenMessage, listenExternalMessage };

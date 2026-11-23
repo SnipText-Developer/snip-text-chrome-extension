@@ -1,5 +1,6 @@
 import { vendors, isComposeUrl } from "../config/vendors";
 import { UrlObserver } from "./controller/editor-handler/observer/url-observer";
+import { runWhenElementExists } from "./common/run-when-element-exists";
 import { runAfterRender } from "./common/wrap-run-after-render";
 import { sendMessage } from "../common/message-bus";
 import {
@@ -41,26 +42,16 @@ function startNaverEditorObserver(): EditorObserver | null {
     vendorName: vendor.id,
     selector: vendor.editorSelector,
     observerType: "COMBINED",
-    shouldInitialize: () => {
-      if (window.self === window.top) {
-        return false;
-      }
-
-      if (!document.querySelector(vendor.editorSelector)) {
-        return false;
-      }
-
-      return true;
-    },
   });
 }
 
 startNaverObserver();
 
 runAfterRender(() => {
-  const observer = startNaverEditorObserver();
+  runWhenElementExists(vendor.editorSelector, () => {
+    const observer = startNaverEditorObserver();
+    if (!observer) return;
 
-  if (observer) {
     listenEditorRouter(
       createEditorRouter({
         vendorName: vendor.id,
@@ -68,5 +59,5 @@ runAfterRender(() => {
         getEditorStatus: () => observer.getEditorStatus(),
       }),
     );
-  }
+  });
 });

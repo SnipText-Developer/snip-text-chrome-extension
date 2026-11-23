@@ -14,7 +14,7 @@ type PopupState = (
   | { phase: "closed" | "loading" | "error"; message?: string }
   | ListState
   | { phase: "variables"; template: Template; list: ListState }
-) & { busy?: boolean; error?: string };
+) & { busy?: boolean; error?: string; searching?: boolean };
 
 const initialState: PopupState = { phase: "closed" };
 
@@ -134,29 +134,31 @@ export function useMiniPopup(selector: string, getTemplates: StartPopupOptions["
       lastQuery = match.query;
       lastEditor = match.editorId;
       const id = ++requestId;
+      const searching = match.query.length > 0;
       if (corrector.current && match.query && "톤교정".startsWith(match.query)) {
-        publish({ phase: "list", templates: [toneCommand], active: 0 });
+        publish({ phase: "list", templates: [toneCommand], active: 0, searching: true });
         return;
       }
-      publish({ phase: "loading", message: "템플릿 불러오는 중…" });
+      publish({ phase: "loading", searching, message: "템플릿 불러오는 중…" });
       try {
         const result = await loader.current();
         if (disposed || id !== requestId) return;
         if (!Array.isArray(result)) throw new Error("Invalid template list");
-        const templates = result.filter((template) =>
+        const templates = searching ? result.filter((template) =>
           `${template.title} ${template.shortcut} ${template.content}`
             .normalize("NFC").toLocaleLowerCase().includes(match.query),
-        );
-        publish({ phase: "list", templates, active: 0 });
+        ) : [...result].sort((a, b) => (Date.parse(b.lastUsedAt) || 0) - (Date.parse(a.lastUsedAt) || 0));
+        templates.reverse();
+        publish({ phase: "list", templates, active: searching ? 0 : -1, searching });
       } catch {
         if (disposed || id !== requestId) return;
         lastQuery = null;
-        publish({ phase: "error", message: "템플릿을 불러오지 못했습니다. 다시 입력해주세요." });
+        publish({ phase: "error", searching, message: "템플릿을 불러오지 못했습니다. 다시 입력해주세요." });
       }
     }
     function onInput(event: Event) {
       if (!dom.isEditorEvent(event)) return;
-      if (!editor.hasSlash(event.target)) return close();
+      if (!editor.hasTrigger(event.target)) return close();
       if (current.busy) return;
       if (current.phase === "variables") {
         publish(current.list);
@@ -211,6 +213,7 @@ export function useMiniPopup(selector: string, getTemplates: StartPopupOptions["
 
   return useMemo(() => ({
     busy: state.busy,
+    searching: state.searching ?? false,
     error: state.error,
     templates: (state.phase === "list" || state.phase === "tones") ? state.templates : [],
     active: (state.phase === "list" || state.phase === "tones") ? state.active : 0,

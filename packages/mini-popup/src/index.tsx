@@ -2,8 +2,7 @@ import { createRoot } from "react-dom/client";
 import { createMiniPopupActions } from "./actions";
 import type { ConnectedPopupOptions, StartPopupOptions } from "./types";
 import { MiniPopup } from "./components/MiniPopup";
-import { createPopupHost } from "./dom/index";
-import { ensurePretendardFont } from "./dom/font";
+import { createPopupHost, ensurePretendardFont } from "./dom/index";
 
 export { getTemplateVariables } from "./utils/text";
 
@@ -18,6 +17,7 @@ export function startPopup(options: StartPopupOptions | ConnectedPopupOptions): 
   root.render(
     <MiniPopup
       selector={selector}
+      newTemplateUrl={options.newTemplateUrl}
       getTemplates={getTemplates}
       insertText={insertText}
       correctTone={correctTone}

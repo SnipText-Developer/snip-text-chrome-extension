@@ -2,6 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { moduleUrl } from "./module-url.mjs";
 
+const { apiConfig } = await import(moduleUrl("../src/config/api.ts"));
+apiConfig.templatesUrl = "";
+
 const { getContentVendor } = await import(moduleUrl("../src/background/common/message-sender.ts"));
 const { router: templateRouter } = await import(moduleUrl("../src/background/template/router.ts"));
 const { vendors } = await import(moduleUrl("../src/config/vendors.ts"));
@@ -18,20 +21,21 @@ function mockChrome(t) {
 const request = { src: "CONTENT", dst: "BACKGROUND", method: "GET", path: "/template/list", data: {} };
 
 for (const vendor of vendors) {
-  test(vendor.id + ": HTTPS 메일과 검증된 blank/srcdoc 하위 프레임만 허용", async (t) => {
+  test(vendor.id + ": HTTPS 메일과 검증된 blank 하위 프레임만 허용", async (t) => {
     mockChrome(t);
     const base = { id: "extension", tab: { id: 3 }, origin: `https://${vendor.hostname}` };
     for (const frameId of [0, 7, undefined]) {
       const sender = { ...base, frameId, url: `https://${vendor.hostname}/` };
       assert.equal(getContentVendor(sender), vendor.id);
       assert.equal((await templateRouter(request, sender)).statusCode, 200);
-      for (const url of ["about:blank", "about:blank#editor", "about:srcdoc"]) {
+      for (const url of ["about:blank", "about:blank#editor"]) {
         const inheritedSender = { ...sender, url };
         assert.equal(getContentVendor(inheritedSender), frameId === 7 ? vendor.id : null);
         const response = await templateRouter(request, inheritedSender);
         assert.equal(response?.statusCode, frameId === 7 ? 200 : undefined);
       }
       for (const url of [
+        "about:srcdoc",
         `blob:https://${vendor.hostname}/document`, `filesystem:https://${vendor.hostname}/temporary/editor`,
         "data:text/html,editor",
       ]) {

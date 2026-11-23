@@ -1,3 +1,5 @@
+import { apiConfig, snipTextApiOrigin } from "../../config/api";
+import { requestApi } from "../common/api-client";
 import { validateTemplateApiResponse } from "./api-validation";
 import type { Template } from "../../core/data-types";
 import { DuplicateShortcutError, repository } from "./repository";
@@ -108,25 +110,47 @@ const parseTemplate = (input: unknown): Template => {
   return template;
 };
 
+// Serialize remote reads and edits so an older list cannot overwrite an edit.
+let pendingSync: Promise<unknown> = Promise.resolve();
+
+function enqueue<T>(operation: () => Promise<T>): Promise<T> {
+  const result = pendingSync.then(operation);
+  pendingSync = result.catch(() => {});
+  return result;
+}
+
 const replaceTemplate = async (input: unknown): Promise<Template | null> => {
   const template = parseTemplate(input);
-  try {
-    return await repository.replace(template);
-  } catch (error) {
-    if (error instanceof DuplicateShortcutError) {
-      throw new TemplateValidationError("이미 사용 중인 단축어입니다.");
+  const url = apiConfig.templatesUrl;
+  return enqueue(async () => {
+    try {
+      if (url.trim() && new URL(url).origin === snipTextApiOrigin) {
+        const { templateId, title, shortcut, content } = template;
+        const result = await requestApi(`${url.replace(/\/$/, "")}/${templateId}`, "PUT", {
+          title, shortcut, content,
+        });
+        const [updated] = validateTemplateApiResponse([result]);
+        if (updated.templateId !== templateId) throw new Error("템플릿 ID가 일치하지 않습니다.");
+        await repository.replace(updated, true);
+        return updated;
+      }
+      return await repository.replace(template);
+    } catch (error) {
+      if (error instanceof DuplicateShortcutError) {
+        throw new TemplateValidationError("이미 사용 중인 단축어입니다.");
+      }
+      throw error;
     }
-    throw error;
-  }
+  });
 };
 
-const syncTemplates = async (url: string): Promise<void> => {
-  if (!url) return;
-  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
-  if (!response.ok) throw new Error(`템플릿 API 요청 실패: ${response.status}`);
-  const data: unknown = await response.json();
-  const templates = validateTemplateApiResponse(data);
-  await repository.replaceAll(templates);
-};
+async function syncTemplates(url = apiConfig.templatesUrl): Promise<boolean> {
+  if (!url.trim()) return false;
+  await enqueue(async () => {
+    const templates = validateTemplateApiResponse(await requestApi(url));
+    await repository.replaceAll(templates);
+  });
+  return true;
+}
 
 export const service = { listTemplates, replaceTemplate, syncTemplates };

@@ -1,69 +1,83 @@
-.tone-page {
+.sidebar-shell .tone-page {
+  --tone-gutter: 16px;
   display: flex;
+  flex: 1 0 auto;
   flex-direction: column;
-  min-height: calc(100dvh - 112px);
-  padding: 4px 0 0;
+  min-width: 0;
+  color: #19212c;
 }
 .tone-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
+  min-height: 48px;
+  margin: -20px calc(-1 * var(--tone-gutter)) 0;
+  padding: 0 var(--tone-gutter);
+  border-bottom: 1px solid #e0e4e8;
 }
-.tone-header h2 { font-size: 18px; font-weight: 650; letter-spacing: -0.5px; }
-.tone-close { color: #808080; }
-.tone-form { display: flex; flex: 1; flex-direction: column; min-height: 0; }
-.tone-options { min-width: 0; margin: 20px 0 0; padding: 0; border: 0; }
+.tone-header h1 { font-size: 15px; font-weight: 700; line-height: 1.3; }
+.tone-header .tone-close { width: 24px; padding: 2px; color: #8793a3; }
+.tone-form { display: flex; flex: 1; flex-direction: column; }
+.tone-options { min-width: 0; margin: 24px 0 0; padding: 0; border: 0; }
 .tone-options legend, .tone-writing > label { padding: 0; font-size: 14px; font-weight: 700; }
-.tone-help {
-  position: relative;
-  display: inline-grid;
-  place-items: center;
-  width: 16px;
-  height: 16px;
-  margin-left: 8px;
-  border: 1px solid #000;
-  border-radius: 50%;
-  color: #000;
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 1;
-  cursor: help;
-}
-.tone-help > span {
-  position: absolute;
-  top: 24px;
-  left: -80px;
-  z-index: 1;
-  display: none;
-  width: 220px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: #202020;
-  color: #fff;
-  font-size: 12px;
-  line-height: 1.6;
-}
-.tone-help:hover > span, .tone-help:focus > span { display: block; }
-.tone-options-list { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 0 2px; }
-.tone-option { position: relative; flex-shrink: 0; cursor: pointer; }
+.tone-options-list { display: flex; flex-wrap: wrap; gap: 7px 6px; padding-top: 8px; }
+.tone-option { position: relative; cursor: pointer; }
 .tone-option input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.tone-option span { display: block; padding: 7px 10px; border: 1px solid #e0e0e0; border-radius: 8px; color: #000; font-size: 12px; font-weight: 650; white-space: nowrap; }
-.tone-option input:checked + span { background: #000; color: #fff; }
-.tone-option input:focus-visible + span { outline: 2px solid #666; outline-offset: 2px; }
-.tone-writing { display: flex; flex: 1; flex-direction: column; gap: 10px; margin-top: 24px; }
-.tone-writing textarea { flex: 1; width: 100%; min-height: 180px; padding: 12px; resize: vertical; border: 1px solid #e0e0e0; border-radius: 10px; background: #fff; color: #202020; font-size: 14px; line-height: 1.65; }
-.tone-writing textarea::placeholder { color: #808080; }
-.tone-progress { color: #666; font-size: 12px; }
+.tone-chip {
+  display: block;
+  padding: 4px 8px;
+  border: 1px solid #cbd2d9;
+  border-radius: 999px;
+  color: #4b586a;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+}
+.tone-option input:checked + span { background: #e7edff; color: #2454d6; }
+.tone-option input:focus-visible + span { outline: 2px solid #2454d6; outline-offset: 2px; }
+.tone-option input:disabled + span { cursor: default; }
+.tone-writing { display: flex; flex-direction: column; gap: 7px; margin-top: 16px; }
+.tone-writing textarea {
+  width: 100%;
+  min-height: 152px;
+  padding: 12px;
+  resize: vertical;
+  border: 1px solid #cbd2d9;
+  border-radius: 8px;
+  background: #fff;
+  color: #19212c;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.tone-writing textarea::placeholder { color: #4b586a; }
+.tone-counts { display: flex; flex-wrap: wrap; gap: 16px; margin: 0; }
+.tone-counts dt { color: #4b586a; font-size: 12px; }
+.tone-counts dd { margin: 4px 0 0; font-size: 14px; font-weight: 650; }
+.tone-progress { color: #4b586a; font-size: 12px; }
 .tone-progress:not(:empty) { margin-top: 10px; }
-.tone-footer { display: flex; justify-content: flex-end; margin-top: 20px; }
-.tone-footer button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 22px; border-radius: 8px; background: #000; color: #fff; font-size: 13px; font-weight: 700; }
-.tone-footer button:disabled { opacity: 0.5; }
+.tone-footer { margin-top: auto; padding-top: 16px; }
+.tone-footer button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #2454d6;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 650;
+}
+.tone-footer button:disabled { background: #e3e7ea; color: #4b586a; opacity: 1; }
+.tone-footer button:hover:enabled { background: #1c43ad; }
 .tone-spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid #ffffff50;
-  border-top-color: #fff;
+  border: 2px solid #aab6c4;
+  border-top-color: currentColor;
   border-radius: 50%;
   animation: tone-spin 0.8s linear infinite;
 }
@@ -71,3 +85,43 @@
 @media (prefers-reduced-motion: reduce) {
   .tone-spinner { animation: none; }
 }
+
+.tone-applied { margin-top: 24px; }
+.tone-applied h2, .tone-result .tone-writing h2 { font-size: 14px; font-weight: 700; }
+.tone-applied h2:focus { outline: none; }
+.tone-applied .tone-chip { display: inline-block; margin-top: 8px; }
+.tone-chip.tone-chip-selected { background: #e7edff; color: #2454d6; }
+.tone-result .tone-writing { margin-top: 18px; }
+.tone-result-box {
+  min-height: 152px;
+  padding: 12px;
+  border: 1px solid #cbd2d9;
+  border-radius: 8px;
+  color: #4b586a;
+  font-size: 15px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.tone-result-text { color: #19212c; font-weight: 600; }
+.tone-result-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.tone-retry {
+  padding: 4px 0;
+  background: transparent;
+  color: #2454d6;
+  font-weight: 600;
+}
+.tone-retry:hover:enabled { text-decoration: underline; }
+.tone-result-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+.tone-result-actions .tone-copy {
+  border: 1px solid #cbd2d9;
+  background: #fff;
+  color: #4b586a;
+}
+.tone-result-actions .tone-copy:hover:enabled { background: #f4f6f8; }

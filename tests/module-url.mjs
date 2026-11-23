@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import ts from "typescript";
 
 const modules = new Map();
@@ -22,7 +22,8 @@ export function moduleUrl(path, replacements = {}) {
         return "from " + JSON.stringify(import.meta.resolve(specifier));
       }
       const relative = new URL(specifier.replace("?inline", ""), url);
-      const resolved = [relative, new URL(relative.href + ".ts"), new URL(relative.href + ".tsx")].find((file) => existsSync(file));
+      const resolved = [relative, new URL(relative.href + ".ts"), new URL(relative.href + ".tsx")]
+        .find((file) => statSync(file, { throwIfNoEntry: false })?.isFile());
       return "from " + JSON.stringify(moduleUrl(resolved));
     });
   }

@@ -1,33 +1,49 @@
 .template-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 220px;
-  padding: 32px 12px;
+  margin-top: clamp(24px, calc(35dvh - 125px), 240px);
+  padding: 0 4px 16px;
   text-align: center;
 }
-.template-empty-icon {
-  width: 48px;
-  height: 48px;
-  margin-bottom: 20px;
-  flex-shrink: 0;
-  background: #ccc;
+.template-list--no-templates .template-empty-state {
+  margin-top: clamp(24px, calc(35dvh - 85px), 280px);
 }
+.template-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 17px;
+  border-radius: 8px;
+  background: #e7edff;
+  color: #2454d6;
+}
+.template-empty-icon svg { width: 23px; height: 23px; }
 .template-empty-state h2 {
-  margin: 0;
-  color: #171c27;
-  font-size: 18px;
-  font-weight: 750;
+  color: #19212c;
+  font-size: 20px;
+  font-weight: 700;
   line-height: 1.45;
   letter-spacing: -0.4px;
   word-break: keep-all;
 }
 .template-empty-state p {
   margin-top: 10px;
-  color: #596174;
-  font-size: 13px;
-  line-height: 1.6;
-  letter-spacing: 0;
+  color: #4b586a;
+  font-size: 14px;
+  line-height: 1.5;
   word-break: keep-all;
+}
+.template-empty-state .template-toolbar {
+  max-width: 248px;
+  gap: 8px;
+  margin: 18px auto 0;
+  padding-top: 0;
+}
+.template-empty-state .new-template {
+  border-color: #2454c6;
+  background: #2454c6;
+  color: #fff;
+}
+.template-empty-state .new-template:hover:enabled {
+  border-color: #1c43ad;
+  background: #1c43ad;
 }

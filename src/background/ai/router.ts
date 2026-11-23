@@ -4,6 +4,7 @@ import {
   isPageSender,
 } from "../common/message-sender";
 import type { MessageRequest, MessageResponse } from "../../core/message-types";
+import { ApiError } from "../common/api-client";
 import { service, AiValidationError } from "./service";
 
 export async function router(
@@ -23,12 +24,16 @@ export async function router(
     const result = await service.correctTone({
       vendorName: req.src === "CONTENT" ? getContentVendor(sender) : data?.vendorName,
       tone: data?.tone,
+      text: req.src === "PAGE" ? data?.text : undefined,
       removeCommand: req.src === "CONTENT",
     });
     return result
       ? { statusCode: 200, data: result }
       : { statusCode: 404, data: { msg: "에디터 상태를 찾을 수 없습니다." } };
   } catch (error) {
+    if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+      return { statusCode: error.status, data: { msg: error.message } };
+    }
     return error instanceof AiValidationError
       ? { statusCode: 400, data: { msg: error.message } }
       : {
