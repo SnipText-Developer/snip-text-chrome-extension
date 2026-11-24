@@ -84,6 +84,20 @@ test("AI tone correction sends the stored editor text to the API and validates c
   assert.equal((await router(request, content)).statusCode, 400);
   await service.updateEditorStatus("GOOGLE", { text: " " });
   assert.equal((await router(request, content)).statusCode, 400);
+
+  const maxLengthText = `${"가".repeat(2998)} 🙂`;
+  await service.updateEditorStatus("GOOGLE", { text: maxLengthText + "\\톤교정  " });
+  assert.deepEqual(await router(request, content), {
+    statusCode: 200,
+    data: { text: `(톤교정)${maxLengthText}` },
+  });
+  const tooLongText = maxLengthText + " ";
+  const limitError = { statusCode: 400, data: { msg: "3000자 이내로 작성하여주세요" } };
+  await service.updateEditorStatus("GOOGLE", { text: tooLongText + "\\톤교정" });
+  assert.deepEqual(await router(request, content), limitError);
+  assert.deepEqual(await router({
+    ...request, src: "PAGE", data: { ...request.data, vendorName: "GOOGLE", text: tooLongText },
+  }, page), limitError);
 });
 
 test("AI service validates inputs independently of the router", async (t) => {

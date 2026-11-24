@@ -51,9 +51,11 @@
   line-height: 1.5;
 }
 .tone-writing textarea::placeholder { color: #4b586a; }
-.tone-counts { display: flex; flex-wrap: wrap; gap: 16px; margin: 0; }
-.tone-counts dt { color: #4b586a; font-size: 12px; }
-.tone-counts dd { margin: 4px 0 0; font-size: 14px; font-weight: 650; }
+.tone-counts { margin: 0; color: #4b586a; font-size: 12px; font-weight: 400; }
+.tone-counts > div { display: inline-flex; gap: 4px; white-space: nowrap; }
+#tone-text-limit > div { display: flex; justify-content: space-between; }
+.tone-counts dd { margin: 0; }
+.tone-count-current { display: inline-block; inline-size: 5ch; text-align: end; font-variant-numeric: tabular-nums; }
 .tone-progress { color: #4b586a; font-size: 12px; }
 .tone-progress:not(:empty) { margin-top: 10px; }
 .tone-footer { margin-top: auto; padding-top: 16px; }

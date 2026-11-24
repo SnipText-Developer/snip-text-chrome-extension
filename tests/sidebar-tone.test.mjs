@@ -41,7 +41,7 @@ test("sidebar previews tone correction and inserts or copies only on demand", as
   assert.equal(document.querySelector("#tone-text").readOnly, false);
   assert.equal(document.querySelector('input[type="radio"]').checked, true);
   assert.equal(document.querySelectorAll('input[type="radio"]').length, 6);
-  assert.deepEqual([...document.querySelectorAll(".tone-counts dd")].map((node) => node.textContent), ["6자", "5자"]);
+  assert.deepEqual([...document.querySelectorAll(".tone-counts dd")].map((node) => node.textContent), ["6 / 3,000자"]);
   const chips = [...document.querySelectorAll(".tone-option")];
   chips.forEach((chip, index) => {
     chip.getBoundingClientRect = () => ({ top: Math.floor(index / 3) * 28, left: index % 3 * 80, width: 76 });
@@ -104,6 +104,20 @@ test("sidebar previews tone correction and inserts or copies only on demand", as
   });
   await act(async () => submit());
   assert.deepEqual(requests.at(-1).data, { vendorName: "GOOGLE", tone: "상사/외부용", text: "수정한 문장" });
+  await act(async () => resolveRequest({ statusCode: 500, data: { msg: "요청 실패" } }));
+
+  const maxLengthText = `${"가".repeat(2998)} 🙂`;
+  const input = document.querySelector("#tone-text");
+  for (const suffix of ["초과", "추가 입력"]) {
+    await act(async () => {
+      input.value = maxLengthText + suffix;
+      input.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+    });
+    assert.equal(input.value, maxLengthText);
+  }
+  assert.deepEqual([...document.querySelectorAll(".tone-counts dd")].map((node) => node.textContent), ["3,000 / 3,000자"]);
+  await act(async () => submit());
+  assert.equal(requests.at(-1).data.text, maxLengthText);
   await act(async () => resolveRequest({ statusCode: 500, data: { msg: "요청 실패" } }));
 });
 

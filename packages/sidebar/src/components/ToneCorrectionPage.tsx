@@ -1,10 +1,14 @@
 import { useContext, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { EditorStatusContext } from "../context/editorStatusContext";
 import InsertBodyButton from "./InsertBodyButton";
+import { countCharacters, maxToneInputCharacters } from "../../../../src/common/tone-correction-input";
 import { sendMessage } from "../common/message-bus";
 import "./ToneCorrectionPage.css";
 
 const tones = ["상사/외부용", "보고/공문용", "마케팅/설득", "공지/안내", "부드러운 존댓말", "편한 반말"];
+function limitToneInput(text: string) {
+  return Array.from(text).slice(0, maxToneInputCharacters).join("");
+}
 
 interface CorrectionResult {
   source: string;
@@ -12,13 +16,18 @@ interface CorrectionResult {
   tone: string;
 }
 
-function CharacterCounts({ text }: { text: string }) {
-  const count = Array.from(text).length;
-  const withoutSpaces = Array.from(text.replace(/\s/gu, "")).length;
+function CharacterCounts({ text, limit }: { text: string; limit?: number }) {
+  const count = countCharacters(text);
   return (
-    <dl className="tone-counts">
-      <div><dt>공백 포함</dt><dd>{count.toLocaleString("ko-KR")}자</dd></div>
-      <div><dt>공백 제외</dt><dd>{withoutSpaces.toLocaleString("ko-KR")}자</dd></div>
+    <dl className="tone-counts" id={limit === undefined ? undefined : "tone-text-limit"}>
+      <div>
+        <dt>공백 포함</dt>
+        <dd>
+          {limit === undefined ? count.toLocaleString("ko-KR") : (
+            <><span className="tone-count-current">{count.toLocaleString("ko-KR")}</span>{` / ${limit.toLocaleString("ko-KR")}`}</>
+          )}자
+        </dd>
+      </div>
     </dl>
   );
 }
@@ -27,7 +36,7 @@ export default function ToneCorrectionPage({ onClose, onNotify: setNotice }: { o
   const [tone, setTone] = useState(tones[0]);
   const [draft, setDraft] = useState<string>();
   const editor = useContext(EditorStatusContext)?.latestStatus;
-  const text = draft ?? editor?.text ?? "";
+  const text = draft ?? limitToneInput(editor?.text ?? "");
   const [result, setResult] = useState<CorrectionResult>();
   const resultHeading = useRef<HTMLHeadingElement>(null);
   const [loading, setLoading] = useState(false);
@@ -190,11 +199,17 @@ export default function ToneCorrectionPage({ onClose, onNotify: setNotice }: { o
             <textarea
               id="tone-text"
               placeholder="교정할 문장을 입력해 주세요."
+              aria-describedby="tone-text-limit"
               value={text}
               readOnly={loading}
-              onInput={(event) => setDraft(event.currentTarget.value)}
+              onInput={(event) => {
+                const input = event.currentTarget;
+                const limitedText = limitToneInput(input.value);
+                if (input.value !== limitedText) input.value = limitedText;
+                setDraft(limitedText);
+              }}
             />
-            <CharacterCounts text={text} />
+            <CharacterCounts text={text} limit={maxToneInputCharacters} />
           </div>
           <p className="tone-progress" role="status">{loading ? "톤 교정 요청 중입니다. 잠시만 기다려주세요." : ""}</p>
           <div className="tone-footer">
