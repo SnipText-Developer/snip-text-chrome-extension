@@ -1,11 +1,18 @@
 import { sendMessage } from "../../common/message-bus";
-import { encryptAuthToken, decryptAuthToken } from "./token-crypto";
+import { sessionStorage, StorageDecryptionError } from "../common/storage";
 import type { AuthToken, AuthVendor } from "./types";
 
-type StoredToken = AuthToken;
-const tokens = new Map<AuthVendor, StoredToken>();
-const expirations = new Map<AuthVendor, number>();
-const timers = new Map<AuthVendor, ReturnType<typeof setTimeout>>();
+const STORAGE_KEY = "snip.auth.tokens";
+type StoredToken = AuthToken & { expiresAt: number };
+
+let timer: ReturnType<typeof setTimeout> | undefined;
+let pending: Promise<unknown> = Promise.resolve();
+
+function enqueue<T>(operation: () => Promise<T>): Promise<T> {
+  const result = pending.then(operation);
+  pending = result.catch(() => {});
+  return result;
+}
 
 function notifyAuthChanged() {
   void sendMessage({
@@ -17,67 +24,75 @@ function notifyAuthChanged() {
   });
 }
 
-const remove = (vendor: AuthVendor): boolean => {
-  const timer = timers.get(vendor);
+function scheduleExpiration(tokens: StoredToken[]) {
   if (timer !== undefined) clearTimeout(timer);
-  timers.delete(vendor);
-  expirations.delete(vendor);
-  return tokens.delete(vendor);
-};
+  timer = undefined;
+  if (tokens.length === 0) return;
 
-const deleteOne = (vendor: AuthVendor): boolean => {
-  const deleted = remove(vendor);
-  if (deleted) notifyAuthChanged();
-  return deleted;
-};
+  const nextExpiry = Math.min(...tokens.map(({ expiresAt }) => expiresAt));
+  const delay = Math.min(Math.max(0, nextExpiry - Date.now()), 2_147_483_647);
+  timer = setTimeout(() => {
+    void enqueue(loadActiveTokens).catch(() => {});
+  }, delay);
+}
 
-const deleteAll = () => {
-  if (!tokens.size) return;
-  for (const vendor of tokens.keys()) remove(vendor);
+async function save(tokens: StoredToken[]) {
+  if (tokens.length) await sessionStorage.set(STORAGE_KEY, tokens);
+  else await sessionStorage.remove(STORAGE_KEY);
+  scheduleExpiration(tokens);
   notifyAuthChanged();
-};
+}
 
-const read = (vendor: AuthVendor): AuthToken | null => {
-  const stored = tokens.get(vendor);
-  const expiresAt = expirations.get(vendor);
-  if (!stored) return null;
-  if (expiresAt === undefined || expiresAt <= Date.now()) {
-    deleteOne(vendor);
-    return null;
-  }
+async function loadTokens(): Promise<StoredToken[]> {
   try {
-    return {
-      vendor,
-      token: decryptAuthToken(stored.token, { vendor, expiresAt }),
-    };
-  } catch {
-    deleteOne(vendor);
-    return null;
+    return (await sessionStorage.get<StoredToken[]>(STORAGE_KEY)) ?? [];
+  } catch (error) {
+    if (!(error instanceof StorageDecryptionError)) throw error;
+    await save([]);
+    return [];
   }
-};
+}
 
-const write = (value: AuthToken, expiresAt: number): AuthToken => {
-  const token = encryptAuthToken(value.token, {
-    vendor: value.vendor,
-    expiresAt,
+async function loadActiveTokens(): Promise<StoredToken[]> {
+  const tokens = await loadTokens();
+  const now = Date.now();
+  const active = tokens.filter(({ expiresAt }) => expiresAt > now);
+  if (active.length !== tokens.length) await save(active);
+  else scheduleExpiration(active);
+  return active;
+}
+
+const read = (vendor: AuthVendor): Promise<AuthToken | null> =>
+  enqueue(async () => {
+    const stored = (await loadActiveTokens()).find((token) => token.vendor === vendor);
+    return stored ? { vendor: stored.vendor, token: stored.token } : null;
   });
-  remove(value.vendor);
-  tokens.set(value.vendor, { vendor: value.vendor, token });
-  expirations.set(value.vendor, expiresAt);
-  timers.set(
-    value.vendor,
-    setTimeout(() => deleteOne(value.vendor), expiresAt - Date.now()),
-  );
-  notifyAuthChanged();
-  return { ...value };
-};
 
-const readLatest = (): AuthToken | null => {
-  for (const vendor of [...tokens.keys()].reverse()) {
-    const token = read(vendor);
-    if (token) return token;
-  }
-  return null;
-};
+const readLatest = (): Promise<AuthToken | null> =>
+  enqueue(async () => {
+    const stored = (await loadActiveTokens()).at(-1);
+    return stored ? { vendor: stored.vendor, token: stored.token } : null;
+  });
+
+const write = (value: AuthToken, expiresAt: number): Promise<AuthToken> =>
+  enqueue(async () => {
+    const tokens = (await loadActiveTokens()).filter(({ vendor }) => vendor !== value.vendor);
+    await save([...tokens, { ...value, expiresAt }]);
+    return { ...value };
+  });
+
+const deleteOne = (vendor: AuthVendor): Promise<boolean> =>
+  enqueue(async () => {
+    const tokens = await loadTokens();
+    const remaining = tokens.filter((token) => token.vendor !== vendor);
+    if (remaining.length === tokens.length) return false;
+    await save(remaining);
+    return true;
+  });
+
+const deleteAll = (): Promise<void> =>
+  enqueue(async () => {
+    if ((await loadTokens()).length) await save([]);
+  });
 
 export const repository = { read, readLatest, update: write, deleteOne, deleteAll };

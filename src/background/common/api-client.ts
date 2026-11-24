@@ -14,7 +14,7 @@ export async function requestApi(url: string, method = "GET", body?: unknown): P
   const headers = new Headers({ Accept: "application/json" });
   const production = new URL(url).origin === snipTextApiOrigin;
   if (production) {
-    const auth = authService.readLatest();
+    const auth = await authService.readLatest();
     if (!auth) throw new ApiError(401, "로그인 후 다시 시도해주세요.");
     headers.set("Authorization", `Bearer ${auth.token}`);
   }

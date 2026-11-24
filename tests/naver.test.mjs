@@ -33,7 +33,7 @@ test("네이버 관련 프레임은 Chrome이 제공한 origin으로 템플릿 �
   const previous = globalThis.chrome;
   globalThis.chrome = {
     runtime: { id: "extension", getURL: (path) => "chrome-extension://extension/" + path },
-    storage: { local: { get: async () => ({ "snip.templates": [] }) } },
+    storage: { local: { get: async () => ({}) } },
   };
   t.after(() => { globalThis.chrome = previous; });
   const base = { id: "extension", tab: { id: 3 }, frameId: 7, origin: `https://${vendor.hostname}` };

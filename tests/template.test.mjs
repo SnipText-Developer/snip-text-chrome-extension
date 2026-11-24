@@ -1,8 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { mockSessionStorage } from "./mock-session-storage.mjs";
 import { moduleUrl } from "./module-url.mjs";
 
-globalThis.__AUTH_TOKEN_ENCRYPTION_KEY_HEX__ = "11".repeat(32);
+globalThis.__STORAGE_ENCRYPTION_KEY_HEX__ = "11".repeat(32);
 
 const { apiConfig } = await import(moduleUrl("../src/config/api.ts"));
 apiConfig.templatesUrl = "";
@@ -20,7 +21,7 @@ const { service } = await import(serviceUrl);
 let stored = {};
 let failWrite = false;
 const sender = { id: "extension-id", url: "chrome-extension://extension-id/src/page/index.html" };
-globalThis.chrome = { runtime: { id: "extension-id", getURL: (path) => "chrome-extension://extension-id/" + path }, storage: { local: {
+globalThis.chrome = { runtime: { id: "extension-id", getURL: (path) => "chrome-extension://extension-id/" + path }, storage: { session: mockSessionStorage(), local: {
   get: async () => structuredClone(stored),
   set: async (data) => {
     if (failWrite) throw new Error("write failed");
@@ -31,6 +32,25 @@ const replace = (data, src = "PAGE") => router({ src, dst: "BACKGROUND", method:
 const dates = { lastUsedAt: "2026-10-07T09:12:00+09:00", createdAt: "2026-09-20T14:03:00+09:00", editedAt: "2026-10-01T11:40:00+09:00" };
 const template = (templateId, changes = {}) => ({ templateId, title: "이름", shortcut: "/" + templateId, content: "본문", variables: [], ...dates, ...changes });
 
+test("template storage saves authenticated ciphertext and rejects tampering", async () => {
+  try {
+    await repository.replaceAll([template(1)]);
+    const ciphertext = stored["snip.templates"];
+    assert.equal(typeof ciphertext, "string");
+    assert.ok(!ciphertext.includes("본문"));
+    assert.deepEqual(await repository.readAll(), [template(1)]);
+
+    const tampered = ciphertext.replace(/("ciphertext":")([0-9a-f])/, (_, prefix, first) =>
+      prefix + (first === "0" ? "1" : "0"),
+    );
+    assert.notEqual(tampered, ciphertext);
+    stored["snip.templates"] = tampered;
+    await assert.rejects(repository.readAll());
+  } finally {
+    stored = {};
+  }
+});
+
 test("full template replacement validates, persists and preserves concurrent writes", async () => {
   const listRequest = { src: "CONTENT", dst: "BACKGROUND", method: "GET", path: "/template/list", data: {} };
   const contentSender = { id: "extension-id", tab: { id: 1 }, url: "https://mail.google.com/mail/u/0/" };
@@ -38,11 +58,7 @@ test("full template replacement validates, persists and preserves concurrent wri
   assert.equal(await router({ ...listRequest, src: "PAGE" }, contentSender), undefined);
   assert.equal(await router(listRequest, { ...contentSender, url: "https://evil.example/" }), undefined);
   assert.equal(await router(listRequest, { ...contentSender, id: "another-extension" }), undefined);
-  stored = { "snip.templates": [{ id: "1", name: "기존 제목", command: "/old", text: "기존 본문" }] };
-  assert.deepEqual(await repository.readAll(), [
-    { templateId: 1, title: "기존 제목", shortcut: "/old", content: "기존 본문", variables: [], lastUsedAt: "1970-01-01T00:00:00.000Z", createdAt: "1970-01-01T00:00:00.000Z", editedAt: "1970-01-01T00:00:00.000Z" },
-  ]);
-  stored = { "snip.templates": [template(1), template(2)] };
+  await repository.replaceAll([template(1), template(2)]);
   const first = template(1, { title: "새 이름", shortcut: "/new", content: "새 본문" });
   assert.equal((await replace(first)).statusCode, 200);
   assert.deepEqual((await service.listTemplates())[0], first);
@@ -88,7 +104,7 @@ test("full template replacement validates, persists and preserves concurrent wri
 test("startup sync validates API data and keeps cached templates on failure", async (t) => {
   const originalFetch = globalThis.fetch;
   t.after(() => { globalThis.fetch = originalFetch; });
-  stored = { "snip.templates": [template(1)] };
+  await repository.replaceAll([template(1)]);
   let calls = 0;
   globalThis.fetch = async (url, options) => {
     calls++;
@@ -133,7 +149,7 @@ test("Spring template DTO arrays are normalized without weakening edit validatio
 test("sync reports all invalid field paths and leaves storage unchanged", async (t) => {
   const originalFetch = globalThis.fetch;
   t.after(() => { globalThis.fetch = originalFetch; });
-  stored = { "snip.templates": [template(1)] };
+  await repository.replaceAll([template(1)]);
   globalThis.fetch = async () => ({ ok: true, json: async () => [
     { templateId: "bad", title: 10, shortcut: "invalid", content: "{{이름}}", variables: [null], createdAt: null },
     null,
@@ -158,7 +174,7 @@ test("refresh requests fetch fresh templates and preserve the cache on failure",
   assert.equal((await router(refresh, sender)).statusCode, 400);
 
   apiConfig.templatesUrl = "http://localhost:8080/api/template";
-  stored = { "snip.templates": [template(1)] };
+  await repository.replaceAll([template(1)]);
   let calls = 0;
   globalThis.fetch = async (url, options) => {
     assert.equal(url, apiConfig.templatesUrl);
@@ -182,11 +198,11 @@ test("production template refresh uses the stored Bearer token and parses the Op
   const { service: authService } = await import(moduleUrl("../src/background/auth/service.ts"));
   const originalFetch = globalThis.fetch;
   const originalUrl = apiConfig.templatesUrl;
-  t.after(() => {
+  t.after(async () => {
     globalThis.fetch = originalFetch;
     apiConfig.templatesUrl = originalUrl;
-    authService.deleteOne("GOOGLE");
-    authService.deleteOne("NAVER");
+    await authService.deleteOne("GOOGLE");
+    await authService.deleteOne("NAVER");
   });
 
   apiConfig.templatesUrl = "https://api.sniptext.kr/api/v1/templates";
@@ -205,9 +221,9 @@ test("production template refresh uses the stored Bearer token and parses the Op
 
   assert.equal((await router(request, sender)).statusCode, 401);
   assert.equal(requests, 0);
-  authService.update({ vendor: "GOOGLE", token: "older-access-token" });
-  authService.update({ vendor: "NAVER", token: "latest-access-token" });
-  stored = { "snip.templates": [template(1)] };
+  await authService.update({ vendor: "GOOGLE", token: "older-access-token" });
+  await authService.update({ vendor: "NAVER", token: "latest-access-token" });
+  await repository.replaceAll([template(1)]);
   const listRequest = { src: "PAGE", method: "GET", path: "/template/list", data: {} };
   const contentSender = { id: sender.id, tab: { id: 1 }, url: "https://mail.google.com/mail/u/0/" };
   for (const [src, caller] of [["PAGE", sender], ["CONTENT", contentSender]]) {

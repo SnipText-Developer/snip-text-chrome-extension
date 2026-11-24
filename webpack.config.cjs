@@ -1,4 +1,3 @@
-const { randomBytes } = require("node:crypto");
 const { DefinePlugin } = require("webpack");
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
@@ -40,7 +39,7 @@ module.exports = {
   },
   plugins: [
     new DefinePlugin({
-      __AUTH_TOKEN_ENCRYPTION_KEY_HEX__: JSON.stringify(randomBytes(32).toString("hex")),
+      __STORAGE_ENCRYPTION_KEY_HEX__: JSON.stringify("26c3f419a04613f7fcc0618049527e7c6cca4eea135e6ceae9b93cbab7c3eeb0"),
     }),
     new HtmlWebpackPlugin({
       template: "./packages/sidebar/index.html",

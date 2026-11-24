@@ -1,4 +1,5 @@
-import { normalizeEditorText } from "../../../utils/editor-text";
+import { readEditorText } from "../../../utils/editor-text";
+import { normalizeEditorText } from "../../../utils/normalize-editor-text";
 import type { EditorObserver } from "./editor-observer";
 
 export class EditorCombinedObserver implements EditorObserver {
@@ -50,7 +51,7 @@ export class EditorCombinedObserver implements EditorObserver {
   getEditorStatus() {
     return {
       isEditable: this.isEditable,
-      text: normalizeEditorText(this.currentEditor?.textContent),
+      text: normalizeEditorText(readEditorText(this.currentEditor)),
     };
   }
 
@@ -74,7 +75,7 @@ export class EditorCombinedObserver implements EditorObserver {
       this.isEditable = false;
     }
 
-    const nextText = this.getEditorStatus()?.text ?? "";
+    const nextText = normalizeEditorText(readEditorText(editor));
     const editorChanged = editor !== this.currentEditor;
     const textChanged =
       editor !== null &&
@@ -171,7 +172,7 @@ export class EditorCombinedObserver implements EditorObserver {
      * input 이벤트에서는 해당 editor가 확실하므로
      * 불필요하게 DOM 전체를 탐색하지 않는다.
      */
-    const nextText = this.getEditorStatus()?.text ?? "";
+    const nextText = normalizeEditorText(readEditorText(editor));
 
     if (editor === this.currentEditor && nextText === this.currentText) {
       return;

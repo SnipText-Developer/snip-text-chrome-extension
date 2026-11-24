@@ -1,4 +1,5 @@
 import { getTemplateVariables } from "../common/template-content";
+import { searchTemplates } from "../common/template-search";
 import TemplateInsertPage from "./TemplateInsertPage";
 import InsertBodyButton from "./InsertBodyButton";
 import { useContext, useEffect, useRef, useState } from "react";
@@ -102,11 +103,7 @@ function TemplateListPage({
     }
   }
 
-  const searchQuery = query.trim().toLowerCase();
-  const visibleTemplates = templates.filter(({ title, shortcut }) =>
-    title.toLowerCase().includes(searchQuery)
-    || (shortcut ?? "").toLowerCase().includes(searchQuery),
-  );
+  const visibleTemplates = searchTemplates(templates, query);
 
   if (selectedTemplate) {
     const close = () => {

@@ -1,94 +1,83 @@
 import { vendors } from "../../config/vendors";
-import type { EditorStatus } from "../../core/data-types";
-import type { EditorVendorName } from "../../core/data-types";
+import type { EditorStatus, EditorVendorName } from "../../core/data-types";
+import { sessionStorage } from "../common/storage";
 
+const STORAGE_KEY = "snip.editors";
 const LIST_MAX_LEN = 2;
+type EditorStates = Partial<Record<EditorVendorName, EditorStatus>>;
 
-const storage: Partial<Record<`snip.${EditorVendorName}`, EditorStatus>> = Object.fromEntries(
-  vendors.map(({ id }) => [`snip.${id}`, {
-    isEditable: false, text: "", prevTexts: [], vendorName: id,
-  }]),
-);
+// Serialize read-modify-write operations on the shared editor record.
+let pending: Promise<unknown> = Promise.resolve();
 
-const getKey = (vendorName: EditorVendorName): `snip.${EditorVendorName}` =>
-  `snip.${vendorName}`;
+function mutate<T>(operation: (states: EditorStates) => Promise<T>): Promise<T> {
+  const result = pending.then(async () => operation(await load()));
+  pending = result.catch(() => {});
+  return result;
+}
 
-const read = async (
+async function load(): Promise<EditorStates> {
+  return (await sessionStorage.get<EditorStates>(STORAGE_KEY)) ?? Object.fromEntries(
+    vendors.map(({ id }) => [id, {
+      isEditable: false, text: "", prevTexts: [], vendorName: id,
+    }]),
+  );
+}
+
+async function save(
+  states: EditorStates,
   vendorName: EditorVendorName,
-): Promise<EditorStatus | null> => {
-  const key = getKey(vendorName);
-  return storage[key] ? { ...storage[key] } : null;
-};
+  status: EditorStatus,
+): Promise<EditorStatus> {
+  states[vendorName] = status;
+  await sessionStorage.set(STORAGE_KEY, states);
+  return status;
+}
 
-const create = async (
+const read = async (vendorName: EditorVendorName): Promise<EditorStatus | null> =>
+  (await load())[vendorName] ?? null;
+
+const create = (
   vendorName: EditorVendorName,
   data: EditorStatus,
-): Promise<EditorStatus | null> => {
-  const key = getKey(vendorName);
-  storage[key] = { ...storage[key], ...data };
+): Promise<EditorStatus> =>
+  mutate((states) => save(states, vendorName, { ...states[vendorName], ...data }));
 
-  return await read(vendorName);
-};
+const readAll = async (): Promise<EditorStatus[]> => Object.values(await load());
 
-const readAll = async (): Promise<EditorStatus[]> => {
-  return Object.values(storage);
-};
+const readLen = async (): Promise<number> => Object.keys(await load()).length;
 
-const readLen = async (): Promise<number> => {
-  return Object.keys(storage).length;
-};
-
-const update = async (
+const update = (
   vendorName: EditorVendorName,
   data: Partial<EditorStatus>,
-): Promise<EditorStatus | null> => {
-  const key = getKey(vendorName);
-  if (!storage[key]) {
-    return null;
-  }
+  prevText?: string,
+): Promise<EditorStatus | null> =>
+  mutate(async (states) => {
+    const status = states[vendorName];
+    if (!status) return null;
 
-  const updated: EditorStatus = {
-    ...storage[key],
-    ...data,
-  };
-  if (updated.prevTexts.length > LIST_MAX_LEN) {
-    updated.prevTexts.slice(LIST_MAX_LEN);
-  }
+    const updated = { ...status, ...data };
+    if (prevText !== undefined) {
+      updated.prevTexts.unshift(prevText);
+      if (updated.prevTexts.length > LIST_MAX_LEN) updated.prevTexts.pop();
+    }
 
-  storage[key] = updated;
+    return save(states, vendorName, updated);
+  });
 
-  return await read(vendorName);
-};
-
-const appendPrevTexts = async (
+const appendPrevTexts = (
   vendorName: EditorVendorName,
   prevText: string,
-): Promise<EditorStatus | null> => {
-  const key = getKey(vendorName);
-  const status = storage[key];
-  if (!status) return null;
+): Promise<EditorStatus | null> => update(vendorName, {}, prevText);
 
-  status.prevTexts.unshift(prevText);
-  if (status.prevTexts.length > LIST_MAX_LEN) {
-    status.prevTexts.pop();
-  }
+const deleteOne = (vendorName: EditorVendorName): Promise<EditorStatus | null> =>
+  mutate(async (states) => {
+    const status = states[vendorName];
+    if (!status) return null;
 
-  return await read(vendorName);
-};
-
-const deleteOne = async (
-  vendorName: EditorVendorName,
-): Promise<EditorStatus | null> => {
-  const key = getKey(vendorName);
-  if (!storage[key]) {
-    return null;
-  }
-
-  const deleted = { ...storage[key] };
-  delete storage[key];
-
-  return deleted;
-};
+    delete states[vendorName];
+    await sessionStorage.set(STORAGE_KEY, states);
+    return status;
+  });
 
 export const repository = {
   create,

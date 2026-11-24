@@ -5,7 +5,9 @@ import { JSDOM } from "jsdom";
 import { moduleUrl } from "./module-url.mjs";
 
 const { insertTextToEditor } = await import(moduleUrl("../src/content/controller/insert-text.ts"));
-const { encodeEditorText, normalizeEditorText } = await import(moduleUrl("../src/content/utils/editor-text.ts"));
+const { encodeEditorText, readEditorText } = await import(moduleUrl("../src/content/utils/editor-text.ts"));
+const { normalizeEditorText } = await import(moduleUrl("../src/content/utils/normalize-editor-text.ts"));
+const { EditorCombinedObserver } = await import(moduleUrl("../src/content/controller/editor-handler/observer/editor-combined-observer.ts"));
 const { createEditorRouter } = await import(moduleUrl("../src/content/editor-router.ts"));
 
 test("content 라우터는 남아 있는 템플릿 변수를 400으로 거절하고 편집기를 변경하지 않음", async (t) => {
@@ -14,7 +16,6 @@ test("content 라우터는 남아 있는 템플릿 변수를 400으로 거절하
   const route = createEditorRouter({
     vendorName: "gmail",
     getEditor: () => { editorReads += 1; return editor; },
-    getEditorStatus: () => ({ text: editor.textContent }),
   });
   const insert = (text) => route({
     src: "BACKGROUND", dst: "CONTENT", method: "PUT", path: "/editor/insert-text", data: { text },
@@ -106,6 +107,7 @@ describe("insertTextToEditor: 문자와 개행 보존", { concurrency: false }, 
       const { window, editor } = createEditor(t);
       assert.deepEqual(insertTextToEditor(editor, input), { prevText: "기존 본문", isInserted: true });
       assertContent(editor, expected);
+      assert.equal(readEditorText(editor), expected);
       assert.ok(window.document.activeElement === editor);
       const selection = window.getSelection();
       assert.equal(selection.rangeCount, 1);
@@ -127,7 +129,7 @@ describe("insertTextToEditor: 문자와 개행 보존", { concurrency: false }, 
   test("반복 삽입은 누적하지 않고 기존 본문 전체를 교체", (t) => {
     const { editor } = createEditor(t);
     insertTextToEditor(editor, "첫 본문\n😀");
-    assert.deepEqual(insertTextToEditor(editor, "다음 본문 <b>문자</b>"), { prevText: "첫 본문😀", isInserted: true });
+    assert.deepEqual(insertTextToEditor(editor, "다음 본문 <b>문자</b>"), { prevText: "첫 본문\n😀", isInserted: true });
     assertContent(editor, "다음 본문 <b>문자</b>");
   });
 });
@@ -195,11 +197,9 @@ describe("insertTextToEditor: 경계값과 예외 경로", { concurrency: false 
     const warning = t.mock.method(console, "warn", () => {});
     const input = '<img src=x>\r\n한글 😀 &amp;';
     assert.deepEqual(insertTextToEditor(editor, input), { prevText: "기존 본문", isInserted: true });
-    assert.equal(editor.textContent, '<img src=x>\n한글 😀 &amp;');
+    assertContent(editor, '<img src=x>\n한글 😀 &amp;');
     assert.equal(editor.querySelector("img"), null);
     assert.equal(warning.mock.callCount(), 1);
-    // This fallback uses textContent: it does not create visual BR line breaks.
-    assert.equal(editor.querySelectorAll("br").length, 0);
   });
 });
 
@@ -233,4 +233,22 @@ describe("observer 공통 텍스트 정규화", { concurrency: false }, () => {
       observer.stop();
     });
   }
+});
+
+test("편집기 상태는 BR, 문단 경계, 빈 줄과 개행만 바뀐 입력을 보존한다", async (t) => {
+  const { window, editor } = createEditor(t);
+  editor.innerHTML = "첫 줄<div>둘째<br>셋째</div><div><br></div><div><b>마지막</b></div>";
+  editor.focus();
+  const texts = [];
+  const observer = new EditorCombinedObserver("[contenteditable]", async () => {
+    texts.push(observer.getEditorStatus().text);
+  });
+  observer.start();
+  await Promise.resolve();
+
+  editor.querySelector("br").remove();
+  editor.dispatchEvent(new window.Event("input", { bubbles: true }));
+  await Promise.resolve();
+  observer.stop();
+  assert.deepEqual(texts, ["첫 줄\n둘째\n셋째\n\n마지막", "첫 줄\n둘째셋째\n\n마지막"]);
 });

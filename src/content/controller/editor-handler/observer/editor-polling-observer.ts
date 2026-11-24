@@ -1,4 +1,5 @@
-import { normalizeEditorText } from "../../../utils/editor-text";
+import { readEditorText } from "../../../utils/editor-text";
+import { normalizeEditorText } from "../../../utils/normalize-editor-text";
 import type { EditorObserver } from "./editor-observer";
 
 export class EditorPollingObserver implements EditorObserver {
@@ -41,7 +42,7 @@ export class EditorPollingObserver implements EditorObserver {
   getEditorStatus() {
     return {
       isEditable: this.isEditable,
-      text: normalizeEditorText(this.currentEditor?.textContent),
+      text: normalizeEditorText(readEditorText(this.currentEditor)),
     };
   }
 
@@ -55,7 +56,7 @@ export class EditorPollingObserver implements EditorObserver {
       this.isEditable = false;
     }
 
-    const nextText = this.getEditorStatus()?.text ?? "";
+    const nextText = normalizeEditorText(readEditorText(editor));
     const textChanged =
       editor !== null &&
       editor === this.currentEditor &&

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toneCommand, toneOptions } from "../commands";
 import type { StartPopupOptions, Template } from "../types";
 import { createMiniPopupDom } from "../dom/index";
+import { matchesShortcut } from "../utils/shortcut-search";
 
 interface ListState {
   phase: "list" | "tones";
@@ -145,8 +146,7 @@ export function useMiniPopup(selector: string, getTemplates: StartPopupOptions["
         if (disposed || id !== requestId) return;
         if (!Array.isArray(result)) throw new Error("Invalid template list");
         const templates = searching ? result.filter((template) =>
-          `${template.title} ${template.shortcut} ${template.content}`
-            .normalize("NFC").toLocaleLowerCase().includes(match.query),
+          matchesShortcut(template.shortcut, match.query),
         ) : [...result].sort((a, b) => (Date.parse(b.lastUsedAt) || 0) - (Date.parse(a.lastUsedAt) || 0));
         templates.reverse();
         publish({ phase: "list", templates, active: searching ? 0 : -1, searching });

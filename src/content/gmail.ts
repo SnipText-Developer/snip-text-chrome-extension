@@ -25,7 +25,6 @@ runAfterRender(() => {
       createEditorRouter({
         vendorName: vendor.id,
         getEditor: () => observer.getEditor(),
-        getEditorStatus: () => observer.getEditorStatus(),
       }),
     );
   }

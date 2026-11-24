@@ -4,6 +4,9 @@ import { JSDOM } from "jsdom";
 import { act, createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
+globalThis.__STORAGE_ENCRYPTION_KEY_HEX__ = "11".repeat(32);
+
+import { mockSessionStorage } from "./mock-session-storage.mjs";
 import { moduleUrl } from "./module-url.mjs";
 
 const { getTemplateVariables } = await import(moduleUrl("../packages/mini-popup/src/utils/text.ts"));
@@ -70,7 +73,6 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   const getEditorText = () => actions.getEditorText();
   const contentRouter = createEditorRouter({
     vendorName: "GOOGLE", getEditor: () => editor,
-    getEditorStatus: () => ({ text: editor.textContent }),
   });
   const contentSender = { id: "extension", url: "https://mail.google.com/mail/u/0/", tab: { id: 42 }, frameId: 3 };
   const delivered = [];
@@ -78,6 +80,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   let holdInsertion;
   const previousChrome = globalThis.chrome;
   globalThis.chrome = {
+    storage: { session: mockSessionStorage() },
     runtime: {
       id: "extension", getURL: (path) => "chrome-extension://extension/" + path,
       sendMessage: (request) => request.dst === "BACKGROUND" ? backgroundRouter(request, contentSender) : Promise.resolve(),
@@ -117,7 +120,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
       editor.focus();
       editor.textContent = trigger;
       const range = document.createRange();
-      range.setStart(editor.firstChild, 1);
+      range.setStart(editor.firstChild, trigger.length);
       range.collapse(true);
       window.getSelection().removeAllRanges();
       window.getSelection().addRange(range);
@@ -133,6 +136,18 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   }
   await open("/");
   assert.notEqual(host.dataset.open, "true");
+  await open("\\일반");
+  assert.equal(host.querySelectorAll('[role="option"]').length, 0);
+  await open("\\안내");
+  assert.equal(host.querySelectorAll('[role="option"]').length, 0);
+  await open("\\적");
+  assert.equal(host.querySelectorAll('[role="option"]').length, 0);
+  await open("\\견");
+  assert.equal(host.querySelectorAll('[role="option"]').length, 1);
+  assert.match(host.querySelector('[role="option"]').textContent, /견적/);
+  await open("\\1");
+  assert.equal(host.querySelectorAll('[role="option"]').length, 1);
+  assert.match(host.querySelector('[role="option"]').textContent, /일반 본문/);
   await open("₩");
   assert.equal(host.dataset.open, "true");
   await open();
@@ -528,17 +543,23 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   const statusRequest = { src: "PAGE", dst: "BACKGROUND", method: "GET", path: "/editor/status", data: { vendorName: "GOOGLE" } };
   assert.equal((await backgroundRouter(statusRequest, pageSender)).statusCode, 200);
   assert.equal(await backgroundRouter({ ...statusRequest, src: "CONTENT" }, contentSender), undefined);
-  const updateRequest = { src: "CONTENT", dst: "BACKGROUND", method: "PUT", path: "/editor/update-status", data: { vendorName: "GOOGLE", status: { isEditable: true } } };
+  const typedDraft = "입력한 첫 줄\n\n마지막 줄\n";
+  const updateRequest = { src: "CONTENT", dst: "BACKGROUND", method: "PUT", path: "/editor/update-status", data: { vendorName: "GOOGLE", status: { isEditable: true, text: typedDraft } } };
   assert.equal((await backgroundRouter(updateRequest, contentSender)).statusCode, 200);
+  assert.equal((await backgroundRouter(statusRequest, pageSender)).data.text, typedDraft);
   assert.equal(await backgroundRouter({ ...updateRequest, src: "PAGE" }, pageSender), undefined);
   assert.equal(await backgroundRouter({ ...updateRequest, data: { vendorName: "NAVER", status: { isEditable: true } } }, contentSender), undefined);
   assert.equal((await backgroundRouter({ ...updateRequest, data: { vendorName: "GOOGLE", status: { isEditable: "invalid" } } }, contentSender)).statusCode, 400);
+  editor.innerHTML = "이전 첫 줄<div>이전 둘째 줄</div>";
+  const sidebarMultiline = "사이드바 본문\n\n마지막 줄\n";
   let pageResponse;
-  await act(async () => { pageResponse = await backgroundRouter({ ...insertionRequest, src: "PAGE", data: { text: "사이드바 본문" } }, pageSender); });
+  await act(async () => { pageResponse = await backgroundRouter({ ...insertionRequest, src: "PAGE", data: { text: sidebarMultiline } }, pageSender); });
   assert.equal(pageResponse.statusCode, 200);
-  assert.equal(editor.textContent, "사이드바 본문", "Sidebar requests still replace the full body");
   assert.equal(delivered.at(-1).tabId, 99);
-  assert.deepEqual(delivered.at(-1).request.data, { text: "사이드바 본문" });
+  assert.deepEqual(delivered.at(-1).request.data, { text: sidebarMultiline });
+  const savedStatus = (await backgroundRouter(statusRequest, pageSender)).data;
+  assert.equal(savedStatus.text, sidebarMultiline);
+  assert.equal(savedStatus.prevTexts[0], "이전 첫 줄\n이전 둘째 줄");
 
   const normalizedRequest = {
     src: "BACKGROUND", dst: "CONTENT", method: "PUT", path: "/editor/insert-text",

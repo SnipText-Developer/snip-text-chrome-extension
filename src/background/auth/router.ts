@@ -18,32 +18,32 @@ export async function router(
   const vendor = req.data && typeof req.data === "object" && "vendor" in req.data ? req.data.vendor : undefined;
   try {
     if (pageSender && req.path === "/auth/logout" && req.method === "POST") {
-      service.deleteAll();
+      await service.deleteAll();
       return { statusCode: 200, data: { authenticated: false } };
     }
 
     if (req.path === "/auth/status" && req.method === "GET") {
       return {
         statusCode: 200,
-        data: { authenticated: service.readLatest() !== null },
+        data: { authenticated: (await service.readLatest()) !== null },
       };
     }
 
     if (req.path === "/auth/token") {
       if (req.method === "GET" && pageSender) {
-        const token = service.read(vendor);
+        const token = await service.read(vendor);
         return token
           ? { statusCode: 200, data: token }
           : { statusCode: 404, data: { msg: "인증 토큰이 없습니다." } };
       }
       if (req.method === "PUT") {
-        const token = service.update(req.data);
+        const token = await service.update(req.data);
         return { statusCode: 200, data: pageSender ? token : { vendor: token.vendor } };
       }
       if (req.method === "DELETE") {
         return {
           statusCode: 200,
-          data: { deleted: service.deleteOne(vendor) },
+          data: { deleted: await service.deleteOne(vendor) },
         };
       }
     }
