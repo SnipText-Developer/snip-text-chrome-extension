@@ -1,7 +1,7 @@
 import { pageConfig } from "../config";
 import "./LoginPage.css";
 
-export default function LoginPage({ onShowTemplates }: { onShowTemplates: () => void }) {
+export default function LoginPage() {
   return (
     <section className="login-page" aria-labelledby="login-heading">
       <div className="login-content">
@@ -19,11 +19,6 @@ export default function LoginPage({ onShowTemplates }: { onShowTemplates: () => 
           </svg>
           Google 로그인
         </a>
-        <a className="login-button" href={pageConfig.dashboardUrl} target="_blank" rel="noopener noreferrer">
-          <span className="naver-login-mark" aria-hidden="true">N</span>
-          네이버 로그인
-        </a>
-        <button type="button" className="login-continue" onClick={onShowTemplates}>템플릿 보기</button>
       </div>
     </section>
   );
