@@ -1,18 +1,18 @@
 {
-  "name": "@snip-text",
+  "name": "snip-text-chrome-extension",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "test:insert-text": "node --test tests/insert-text.test.mjs",
-    "dev": "npm --workspace @snip-text/sidebar run dev",
+    "dev": "npm --workspace snip-text-sidebar run dev",
     "build": "npm run build:popup && tsc && webpack --config webpack.config.cjs && npm run build:sidebar",
-    "build:popup": "npm --workspace @snip-text/mini-popup run build",
-    "build:sidebar": "npm --workspace @snip-text/sidebar run build && node --input-type=module -e \"import {rmSync,cpSync} from 'node:fs'; rmSync('dist/src/page',{recursive:true,force:true}); cpSync('packages/sidebar/dist','dist/src/page',{recursive:true});\""
+    "build:popup": "npm --workspace snip-text-mini-popup run build",
+    "build:sidebar": "npm --workspace snip-text-sidebar run build && node --input-type=module -e \"import {rmSync,cpSync} from 'node:fs'; rmSync('dist/src/page',{recursive:true,force:true}); cpSync('packages/sidebar/dist','dist/src/page',{recursive:true});\""
   },
   "dependencies": {
     "@noble/ciphers": "^2.4.0",
-    "@snip-text/mini-popup": "*"
+    "snip-text-mini-popup": "*"
   },
   "devDependencies": {
     "@types/chrome": "^0.3.0",

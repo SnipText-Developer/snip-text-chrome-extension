@@ -244,7 +244,7 @@ CONTENT 요청은 `sender.tab.id`와 `sender.frameId`로 전달 대상을 지정
 
 ### 7.1 패키지와 상태 분리
 
-`@snip-text/mini-popup`은 메일 문서에 호스트와 React root를 생성합니다. `startPopup`은 이를 제거하는 정리 함수를 반환합니다.
+`snip-text-mini-popup`은 메일 문서에 호스트와 React root를 생성합니다. `startPopup`은 이를 제거하는 정리 함수를 반환합니다.
 
 | 파일·영역 | 역할 |
 | --- | --- |

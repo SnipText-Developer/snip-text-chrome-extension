@@ -123,10 +123,10 @@ vendor는 `google` 또는 `naver`입니다. 허용되지 않은 발신자는 응
 
 ### mini-popup 패키지
 
-`packages/mini-popup`은 독립 React 패키지 `@snip-text/mini-popup`입니다. Chrome API 호출은 사용처에서 주입합니다. `npm run build:popup`으로 ESM 번들과 타입 선언을 생성하며, 전체 `npm run build`에서도 먼저 빌드합니다.
+`packages/mini-popup`은 독립 React 패키지 `snip-text-mini-popup`입니다. Chrome API 호출은 사용처에서 주입합니다. `npm run build:popup`으로 ESM 번들과 타입 선언을 생성하며, 전체 `npm run build`에서도 먼저 빌드합니다.
 
 ```ts
-import { startPopup } from "@snip-text/mini-popup";
+import { startPopup } from "snip-text-mini-popup";
 
 const stopPopup = startPopup({
   selector: '[contenteditable="true"]',
@@ -145,7 +145,7 @@ mini-popup의 삽입은 주입된 콜백을 통해 background의 `/editor/insert
 
 ### 사이드바 패키지
 
-사이드바 React 앱은 `packages/sidebar`의 npm workspace 패키지 `@snip-text/sidebar`에서 관리합니다. 개발은 `npm run dev`, 린트는 `npm --workspace @snip-text/sidebar run lint`, 빌드는 `npm run build:sidebar`를 사용합니다. 전체 빌드에도 포함됩니다.
+사이드바 React 앱은 `packages/sidebar`의 npm workspace 패키지 `snip-text-sidebar`에서 관리합니다. 개발은 `npm run dev`, 린트는 `npm --workspace snip-text-sidebar run lint`, 빌드는 `npm run build:sidebar`를 사용합니다. 전체 빌드에도 포함됩니다.
 
 사이드바의 결과물은 확장 프로그램의 기존 `dist/src/page/`에 복사합니다. manifest의 사이드바 경로와 background의 PAGE 발신자 검증 URL은 그대로 사용합니다. 의존성은 루트 `package-lock.json`으로 관리합니다.
 
