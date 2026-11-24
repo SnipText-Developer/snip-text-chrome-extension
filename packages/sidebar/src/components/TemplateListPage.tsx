@@ -1,5 +1,5 @@
 import { getTemplateVariables } from "../common/template-content";
-import { searchTemplates } from "../common/template-search";
+import { formatShortcut, searchTemplates } from "../common/template-search";
 import TemplateInsertPage from "./TemplateInsertPage";
 import InsertBodyButton from "./InsertBodyButton";
 import { useContext, useEffect, useRef, useState } from "react";
@@ -216,7 +216,7 @@ function TemplateListPage({
             <article className="template-card" key={item.templateId}>
               <div className="template-card-heading">
                 {item.shortcut && (
-                  <span className="template-command" title={item.shortcut}>{item.shortcut}</span>
+                  <span className="template-command" title={formatShortcut(item.shortcut)}>{formatShortcut(item.shortcut)}</span>
                 )}
                 <h2>{item.title}</h2>
               </div>

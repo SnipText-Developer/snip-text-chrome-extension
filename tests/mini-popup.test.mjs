@@ -50,7 +50,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   window.HTMLElement.prototype.scrollIntoView = () => {};
   const templates = [
     { templateId: 2, title: "견적 안내", shortcut: "/견적", content: "{{이름}}님 {{금액}}원", variables: ["이름", "금액"], lastUsedAt: "2026-10-02T00:00:00Z" },
-    { templateId: 1, title: "본문", shortcut: "/1", content: "일반 본문", variables: [], lastUsedAt: "2026-10-01T00:00:00Z" },
+    { templateId: 1, title: "본문", shortcut: "\\1", content: "일반 본문", variables: [], lastUsedAt: "2026-10-01T00:00:00Z" },
   ];
   let deferred;
   let holdResponse = false;
@@ -144,7 +144,8 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   assert.equal(host.querySelectorAll('[role="option"]').length, 0);
   await open("\\견");
   assert.equal(host.querySelectorAll('[role="option"]').length, 1);
-  assert.match(host.querySelector('[role="option"]').textContent, /견적/);
+  assert.equal(host.querySelector('[role="option"] .template-command').textContent, "\\견적");
+  assert.equal(host.querySelector('[role="option"]').getAttribute("aria-label"), "\\견적 견적 안내");
   await open("\\1");
   assert.equal(host.querySelectorAll('[role="option"]').length, 1);
   assert.match(host.querySelector('[role="option"]').textContent, /일반 본문/);
@@ -359,10 +360,15 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   } finally {
     for (const type of ["keydown", "keyup", "keypress"]) window.removeEventListener(type, observeInputKey, true);
   }
-  await act(async () => host.querySelector('button[type="button"]').click());
+  assert.equal(host.querySelector('.variable-keys button[type="button"]'), null);
+  assert.deepEqual(
+    Array.from(host.querySelector(".variable-keys").children, (item) => item.textContent),
+    ["Enter 삽입", "Tab 다음 항목", "Esc 닫기"],
+  );
+  await act(async () => key(host.querySelector("input"), "Escape"));
   const requestsBeforeCancel = requests;
   await act(async () => { host.querySelectorAll('[role="option"]')[1].click(); });
-  await act(async () => { host.querySelector('button[type="button"]').click(); });
+  await act(async () => key(host.querySelector("input"), "Escape"));
   assert.equal(host.querySelectorAll('[role="option"]').length, 2, "Cancel returns to the previous list");
   assert.ok(document.activeElement === host.querySelectorAll('[role="option"]')[1]);
   assert.equal(requests, requestsBeforeCancel, "Returning to the list does not reload templates");
@@ -393,11 +399,8 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
       });
       assert.ok(host.querySelector(".variable-entry"), "IME Escape must not leave the input screen");
       await act(async () => {
-        if (cycle % 2) host.querySelector('button[type="button"]').click();
-        else {
-          host.querySelector("input").dispatchEvent(new window.CompositionEvent("compositionend", { bubbles: true }));
-          key(host.querySelector("input"), "Escape");
-        }
+        host.querySelector("input").dispatchEvent(new window.CompositionEvent("compositionend", { bubbles: true }));
+        key(host.querySelector("input"), "Escape");
       });
       assert.ok(document.activeElement === host.querySelectorAll('[role="option"]')[1], "Cancel restores the selected option");
       await act(async () => { key(document.activeElement, "ArrowUp"); });

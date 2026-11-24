@@ -71,6 +71,8 @@ test("the sidebar refreshes templates upon login and supports logout and guest t
   assert.equal(checks, 2);
   assert.equal(refreshes, 1);
   assert.equal(document.querySelector(".template-card h2")?.textContent, "새 템플릿 제목");
+  assert.equal(document.querySelector(".template-card .template-command")?.textContent, "\\새");
+  assert.equal(document.querySelector(".template-card .template-command")?.title, "\\새");
   await act(async () => window.dispatchEvent(new window.Event("focus")));
   assert.equal(refreshes, 1);
 
