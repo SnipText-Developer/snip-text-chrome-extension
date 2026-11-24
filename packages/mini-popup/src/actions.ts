@@ -1,6 +1,8 @@
 import { sendMessage } from "./common/message-bus";
 import type { PopupConnection, StartPopupOptions, Template } from "./types";
 
+export class LoginRequiredError extends Error {}
+
 export async function getEditorText(): Promise<string> {
   const response = await sendMessage({
     src: "CONTENT", dst: "BACKGROUND", method: "GET", path: "/editor/text", data: {},
@@ -32,6 +34,7 @@ export async function getTemplates(): Promise<Template[]> {
     path: "/template/list",
     data: {},
   });
+  if (response?.statusCode === 401) throw new LoginRequiredError(response.data?.msg);
   if (
     response?.statusCode !== 200 ||
     !Array.isArray(response.data?.templates)
@@ -63,6 +66,7 @@ export function createMiniPopupActions(
         src: "CONTENT", dst: "BACKGROUND", method: "POST", path: "/ai/tone-correction",
         data: { tone },
       });
+      if (response?.statusCode === 401) throw new LoginRequiredError(response.data?.msg);
       if (response?.statusCode !== 200 || typeof response.data?.text !== "string" || !response.data.text.trim()) {
         throw new Error(response?.data?.msg ?? "교정 결과를 받지 못했습니다.");
       }

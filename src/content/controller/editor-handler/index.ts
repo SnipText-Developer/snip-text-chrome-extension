@@ -65,6 +65,7 @@ function startEditorObserver({
   observer.start();
   startPopup({
     selector,
+    loginUrl: apiConfig.loginUrl,
     newTemplateUrl: apiConfig.newTemplateUrl,
     vendorName,
     getEditorStatus: () => observer.getEditorStatus(),
