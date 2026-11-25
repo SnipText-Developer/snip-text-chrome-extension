@@ -39,7 +39,7 @@ async function correctTone({ vendorName, tone, text: inputText, removeCommand = 
   const status = await editorService.getEditorStatus(vendorName);
   if (!status) return null;
   const text = removeCommand
-    ? status.text.replace(/[\\₩]톤(?:교(?:정)?)?\s*$/, "")
+    ? status.text.replace(/[\\₩]톤(?:교(?:정)?)?(?=\s|$)/g, "")
     : typeof inputText === "string" ? inputText : status.text;
   if (!text.trim()) throw new AiValidationError("교정할 본문을 작성해주세요.");
   if (countCharacters(text) > maxToneInputCharacters) {

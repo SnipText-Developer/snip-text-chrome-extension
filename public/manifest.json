@@ -12,7 +12,7 @@
   ],
   "host_permissions": ["http://localhost/*", "https://api.sniptext.kr/*"],
   "externally_connectable": {
-    "matches": ["https://sniptext.kr/*", "http://localhost:3000/*"]
+    "matches": ["https://sniptext.kr/*"]
   },
   "background": {
     "service_worker": "./src/background/service-worker.js"

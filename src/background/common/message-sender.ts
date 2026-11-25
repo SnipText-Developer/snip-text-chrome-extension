@@ -13,7 +13,7 @@ export function isPageSender(
   );
 }
 
-const dashboardOrigins = new Set(["https://sniptext.kr", "http://localhost:3000"]);
+const dashboardOrigins = new Set(["https://sniptext.kr"]);
 
 export function isDashboardSender(sender: chrome.runtime.MessageSender) {
   return (
