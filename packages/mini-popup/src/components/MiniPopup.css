@@ -116,56 +116,6 @@
 
 #snip-text-mini-popup .popup-footer a:hover { text-decoration: underline; }
 
-#snip-text-mini-popup .login-intro {
-  flex-shrink: 1;
-  overflow: auto;
-  text-align: center;
-  font-weight: 400;
-}
-
-#snip-text-mini-popup .login-logo {
-  margin: 4px 0 10px;
-  color: #1947b8;
-  font-size: 44px;
-  font-weight: 900;
-  font-style: italic;
-  line-height: 1;
-}
-
-#snip-text-mini-popup .login-intro h2 {
-  margin: 0;
-  color: #171c27;
-  font-size: 16px;
-  font-weight: 800;
-  word-break: keep-all;
-}
-
-#snip-text-mini-popup .login-intro p {
-  margin: 6px 0 0;
-  word-break: keep-all;
-}
-
-#snip-text-mini-popup .login-button {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  min-height: 40px;
-  margin: 12px 6px 16px;
-  border: 1px solid #d5d5d5;
-  border-radius: 9px;
-  background: #fff;
-  color: #111;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-#snip-text-mini-popup .login-button:hover {
-  background: #f7f8fa;
-  border-color: #969ca7;
-}
-
 #snip-text-mini-popup .popup-group {
   display: flex;
   align-items: flex-start;

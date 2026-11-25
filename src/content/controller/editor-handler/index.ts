@@ -65,6 +65,8 @@ function startEditorObserver({
   observer.start();
   startPopup({
     selector,
+    googleLogoUrl: chrome.runtime.getURL("icons/google-logo.svg"),
+    logoUrl: chrome.runtime.getURL("icons/logo-192.png"),
     loginUrl: apiConfig.loginUrl,
     newTemplateUrl: apiConfig.newTemplateUrl,
     vendorName,

@@ -17,6 +17,8 @@ export function startPopup(options: StartPopupOptions | ConnectedPopupOptions): 
   root.render(
     <MiniPopup
       selector={selector}
+      googleLogoUrl={options.googleLogoUrl}
+      logoUrl={options.logoUrl}
       loginUrl={options.loginUrl}
       newTemplateUrl={options.newTemplateUrl}
       getTemplates={getTemplates}
