@@ -75,7 +75,7 @@
   text-align: left;
 }
 
-#snip-text-mini-popup .variable-keys button::before {
+#snip-text-mini-popup .variable-keys span::before {
   content: "·";
   margin-inline-end: 6px;
 }

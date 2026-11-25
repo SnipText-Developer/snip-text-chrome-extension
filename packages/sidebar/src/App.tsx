@@ -11,7 +11,6 @@ type AuthStatus = "checking" | "authenticated" | "signedOut" | "error";
 
 function App() {
   const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
-  const [showGuestTemplates, setShowGuestTemplates] = useState(false);
   const authRequest = useRef(0);
   const [notification, setNotification] = useState<{ message: string; id: number } | null>(null);
   const [showToneCorrection, setShowToneCorrection] = useState(false);
@@ -29,7 +28,6 @@ function App() {
       if (response?.statusCode !== 200) throw new Error("Logout failed");
 
       authRequest.current++;
-      setShowGuestTemplates(false);
       setShowToneCorrection(false);
       setAuthStatus("signedOut");
       notify("");
@@ -73,10 +71,10 @@ function App() {
   }, [checkAuth]);
 
   useEffect(() => {
-    if (authStatus === "signedOut" && !showGuestTemplates) {
+    if (authStatus === "signedOut") {
       void checkAuth();
     }
-  }, [authStatus, checkAuth, showGuestTemplates]);
+  }, [authStatus, checkAuth]);
 
   useEffect(() => {
     if (authStatus !== "authenticated") return;
@@ -104,13 +102,13 @@ function App() {
         <main className="sidebar">
           {authStatus === "checking" ? (
             <p role="status">로그인 상태를 확인하는 중…</p>
-          ) : authStatus === "authenticated" || showGuestTemplates ? (
+          ) : authStatus === "authenticated" ? (
             <SidebarContent
               showToneCorrection={showToneCorrection}
               onNotify={notify}
               onOpenToneCorrection={openToneCorrection}
               onShowTemplates={showTemplates}
-              onLogout={authStatus === "authenticated" ? logout : undefined}
+              onLogout={logout}
             />
           ) : authStatus === "error" ? (
             <section>
@@ -121,7 +119,7 @@ function App() {
               }}>다시 확인</button>
             </section>
           ) : (
-            <LoginPage onShowTemplates={() => setShowGuestTemplates(true)} />
+            <LoginPage />
           )}
         </main>
         <NotificationToast notification={notification} />

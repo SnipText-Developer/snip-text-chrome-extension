@@ -49,7 +49,7 @@ project/
 
 ## 스마트 템플릿 선택
 
-Gmail 또는 네이버 메일 본문에서 `/`를 입력하면 커서 아래에 작은 템플릿 목록이 표시됩니다. 아래 공간이 부족하면 위에 표시됩니다. `/` 뒤에 이름이나 번호를 입력해 검색하고, 마우스 클릭 또는 ↑↓와 Enter로 선택하세요. Esc로 닫을 수 있습니다. 선택 시 `/검색어`만 템플릿 내용으로 바뀌고 나머지 본문은 유지됩니다.
+Gmail 또는 네이버 메일 본문에서 `\`를 입력하면 커서 아래에 작은 템플릿 목록이 표시됩니다. 아래 공간이 부족하면 위에 표시됩니다. `\` 뒤에 단축어의 첫 글자부터 입력해 검색하고, 마우스 클릭 또는 ↑↓와 Enter로 선택하세요. Esc로 닫을 수 있습니다. 선택 시 `\검색어`만 템플릿 내용으로 바뀌고 나머지 본문은 유지됩니다.
 
 템플릿 목록은 `src/background/template/repository.ts`에서 관리하며, 사이드바와 메일 단축어 팝업이 `GET /template/list` 메시지로 조회합니다.
 
@@ -60,7 +60,7 @@ Gmail 또는 네이버 메일 본문에서 `/`를 입력하면 커서 아래에 
 ### 템플릿 사이드바
 
 확장 프로그램 아이콘을 클릭하면 템플릿 화면을 열 수 있습니다.
-background에서 조회한 템플릿을 표시하며, 이름·내용·단축어로 검색하고 내용을 복사할 수 있습니다. 각 템플릿의 ‘메일 본문에 삽입’ 버튼으로 활성 탭의 Gmail 또는 네이버 메일 작성 창에 내용을 넣을 수 있습니다.
+background에서 조회한 템플릿을 표시하며, 이름·단축어로 검색하고 내용을 복사할 수 있습니다. 각 템플릿의 ‘메일 본문에 삽입’ 버튼으로 활성 탭의 Gmail 또는 네이버 메일 작성 창에 내용을 넣을 수 있습니다.
 
 ### 템플릿 수정
 
@@ -102,11 +102,11 @@ Google 또는 네이버 로그인 버튼을 누르면 새 탭에서 대시보드
 
 vendor는 `google` 또는 `naver`입니다. 허용되지 않은 발신자는 응답 없이 무시합니다. 조회 응답에 토큰이 포함되므로 content script로 전달하지 마세요.
 
-토큰은 메모리에 AES-256-GCM 암호문으로 보관합니다. webpack 빌드 시 암호학적 32바이트 난수 키를 생성하여 `auth/config.ts`의 `encryptionKeyHex`에 주입합니다. 빌드마다 새 키를 사용합니다. 암호화·복호화는 `token-crypto.ts`에서 처리합니다. 고정 키는 번들에 포함되어 사용자가 확인할 수 있습니다.
+백그라운드 레포지터리는 AES-256-GCM을 사용합니다. webpack은 모든 빌드에 같은 32바이트 키를 주입하며, 암호화할 때마다 새 IV를 생성합니다. 고정 키는 확장 프로그램 번들에서 확인할 수 있습니다.
 
-만료 시각은 epoch 밀리초이며, 지정하지 않으면 최대 5분 보관합니다. 더 짧은 만료 시각을 지정할 수 있습니다. 만료·워커 종료 시 제거되며 자동 갱신하지 않습니다.
+토큰과 만료 시각은 Chrome 세션 저장소에 암호문으로 보관합니다. 서비스 워커가 재시작해도 같은 브라우저 세션에서 유효한 토큰을 읽을 수 있습니다. 만료 시각은 epoch 밀리초이며, 생략하면 5분 후에 만료됩니다. 지정한 시각이 5분보다 가까우면 5분으로 조정합니다.
 
-기존 저장 템플릿은 조회 시 새 스키마로 변환합니다. 과거 날짜 정보가 없는 경우 `1970-01-01T00:00:00.000Z`를 사용합니다. 사이드바는 background에서 받은 순서대로 템플릿을 표시합니다.
+사이드바는 background에서 받은 순서대로 템플릿을 표시합니다.
 
 새 템플릿 버튼의 이동 주소는 `packages/sidebar/src/config.ts`의 `pageConfig.newTemplateUrl`에 전체 HTTP(S) URL로 지정합니다. 설정 후 다시 빌드하면 버튼 클릭 시 현재 페이지가 해당 URL로 이동합니다. 주소가 비어 있으면 버튼을 비활성화합니다.
 
@@ -119,14 +119,14 @@ vendor는 `google` 또는 `naver`입니다. 허용되지 않은 발신자는 응
 
 ### 텍스트 삽입 테스트
 
-`npm run test:insert-text`로 `insertTextToEditor`와 공통 공백·개행 인코딩을 검증합니다. 한글·다국어·이모지·결합 문자·HTML/엔티티 문자열·특수 공백·개행·긴 본문·커서 위치·예외 경로를 포함합니다. jsdom 기반 DOM 테스트이며 실제 메일 편집기의 렌더링과 실행 취소 동작은 별도 브라우저 확인이 필요합니다. Range 삽입 실패 시 기존 `textContent` fallback에도 같은 인코딩을 적용하지만 시각적 개행을 위한 `<br>`는 생성하지 않습니다.
+`npm run test:insert-text`로 `insertTextToEditor`와 공통 공백·개행 인코딩을 검증합니다. 한글·다국어·이모지·결합 문자·HTML/엔티티 문자열·특수 공백·개행·긴 본문·커서 위치·예외 경로를 포함합니다. jsdom 기반 DOM 테스트이며 실제 메일 편집기의 렌더링과 실행 취소 동작은 별도 브라우저 확인이 필요합니다. Range 삽입 실패 시에도 텍스트 노드와 `<br>`로 본문을 교체합니다.
 
 ### mini-popup 패키지
 
-`packages/mini-popup`은 독립 React 패키지 `@snip-text/mini-popup`입니다. Chrome API 호출은 사용처에서 주입합니다. `npm run build:popup`으로 ESM 번들과 타입 선언을 생성하며, 전체 `npm run build`에서도 먼저 빌드합니다.
+`packages/mini-popup`은 독립 React 패키지 `snip-text-mini-popup`입니다. Chrome API 호출은 사용처에서 주입합니다. `npm run build:popup`으로 ESM 번들과 타입 선언을 생성하며, 전체 `npm run build`에서도 먼저 빌드합니다.
 
 ```ts
-import { startPopup } from "@snip-text/mini-popup";
+import { startPopup } from "snip-text-mini-popup";
 
 const stopPopup = startPopup({
   selector: '[contenteditable="true"]',
@@ -145,7 +145,7 @@ mini-popup의 삽입은 주입된 콜백을 통해 background의 `/editor/insert
 
 ### 사이드바 패키지
 
-사이드바 React 앱은 `packages/sidebar`의 npm workspace 패키지 `@snip-text/sidebar`에서 관리합니다. 개발은 `npm run dev`, 린트는 `npm --workspace @snip-text/sidebar run lint`, 빌드는 `npm run build:sidebar`를 사용합니다. 전체 빌드에도 포함됩니다.
+사이드바 React 앱은 `packages/sidebar`의 npm workspace 패키지 `snip-text-sidebar`에서 관리합니다. 개발은 `npm run dev`, 린트는 `npm --workspace snip-text-sidebar run lint`, 빌드는 `npm run build:sidebar`를 사용합니다. 전체 빌드에도 포함됩니다.
 
 사이드바의 결과물은 확장 프로그램의 기존 `dist/src/page/`에 복사합니다. manifest의 사이드바 경로와 background의 PAGE 발신자 검증 URL은 그대로 사용합니다. 의존성은 루트 `package-lock.json`으로 관리합니다.
 

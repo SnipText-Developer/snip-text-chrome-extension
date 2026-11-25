@@ -1,13 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { mockSessionStorage } from "./mock-session-storage.mjs";
 import { moduleUrl } from "./module-url.mjs";
 
-globalThis.__AUTH_TOKEN_ENCRYPTION_KEY_HEX__ = "11".repeat(32);
+globalThis.__STORAGE_ENCRYPTION_KEY_HEX__ = "11".repeat(32);
+globalThis.chrome = { storage: { session: mockSessionStorage() } };
 const { service: authService } = await import(moduleUrl("../src/background/auth/service.ts"));
 
-function mockToneApi(t) {
+async function mockToneApi(t) {
   const previous = globalThis.fetch;
-  authService.update({ vendor: "GOOGLE", token: "access-token" });
+  await authService.update({ vendor: "GOOGLE", token: "access-token" });
   globalThis.fetch = async (url, options) => {
     assert.equal(url, "https://api.sniptext.kr/api/v1/ai/tone-corrections");
     assert.equal(options.method, "POST");
@@ -17,9 +19,9 @@ function mockToneApi(t) {
     assert.equal(style, t.name.includes("independently") ? "NOTICE" : "BOSS_EXTERNAL");
     return Response.json({ isSuccess: true, result: { correctedText: `(톤교정)${text}` } });
   };
-  t.after(() => {
+  t.after(async () => {
     globalThis.fetch = previous;
-    authService.deleteOne("GOOGLE");
+    await authService.deleteOne("GOOGLE");
   });
 }
 
@@ -28,9 +30,10 @@ const { router } = await import(moduleUrl("../src/background/ai/router.ts"));
 const { service } = await import(moduleUrl("../src/background/editor/service.ts"));
 
 test("AI tone correction sends the stored editor text to the API and validates callers", async (t) => {
-  mockToneApi(t);
+  await mockToneApi(t);
   const previous = globalThis.chrome;
   globalThis.chrome = {
+    ...previous,
     runtime: { id: "extension", getURL: (path) => "chrome-extension://extension/" + path },
   };
   t.after(() => { globalThis.chrome = previous; });
@@ -81,10 +84,24 @@ test("AI tone correction sends the stored editor text to the API and validates c
   assert.equal((await router(request, content)).statusCode, 400);
   await service.updateEditorStatus("GOOGLE", { text: " " });
   assert.equal((await router(request, content)).statusCode, 400);
+
+  const maxLengthText = `${"가".repeat(2998)} 🙂`;
+  await service.updateEditorStatus("GOOGLE", { text: maxLengthText + "\\톤교정  " });
+  assert.deepEqual(await router(request, content), {
+    statusCode: 200,
+    data: { text: `(톤교정)${maxLengthText}` },
+  });
+  const tooLongText = maxLengthText + " ";
+  const limitError = { statusCode: 400, data: { msg: "3000자 이내로 작성하여주세요" } };
+  await service.updateEditorStatus("GOOGLE", { text: tooLongText + "\\톤교정" });
+  assert.deepEqual(await router(request, content), limitError);
+  assert.deepEqual(await router({
+    ...request, src: "PAGE", data: { ...request.data, vendorName: "GOOGLE", text: tooLongText },
+  }, page), limitError);
 });
 
 test("AI service validates inputs independently of the router", async (t) => {
-  mockToneApi(t);
+  await mockToneApi(t);
   const { service: aiService, AiValidationError } = await import(moduleUrl("../src/background/ai/service.ts"));
   await service.updateEditorStatus("NAVER", { text: "안녕하세요\\톤교" });
   t.after(() => service.updateEditorStatus("NAVER", { text: "" }));

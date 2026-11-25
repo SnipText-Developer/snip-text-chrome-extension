@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toneCommand, toneOptions } from "../commands";
 import type { StartPopupOptions, Template } from "../types";
 import { createMiniPopupDom } from "../dom/index";
+import { matchesShortcut } from "../utils/shortcut-search";
+import { LoginRequiredError } from "../actions";
 
 interface ListState {
   phase: "list" | "tones";
@@ -12,6 +14,7 @@ interface ListState {
 
 type PopupState = (
   | { phase: "closed" | "loading" | "error"; message?: string }
+  | { phase: "login" }
   | ListState
   | { phase: "variables"; template: Template; list: ListState }
 ) & { busy?: boolean; error?: string; searching?: boolean };
@@ -100,7 +103,12 @@ export function useMiniPopup(selector: string, getTemplates: StartPopupOptions["
         await inserter.current(text);
         if (!disposed && id === requestId) { dismissed = true; close(); }
       } catch (error) {
-        if (!disposed && id === requestId) publish({ ...current, busy: false, error: error instanceof Error ? error.message : "톤 교정 요청에 실패했습니다." });
+        if (disposed || id !== requestId) return;
+        if (error instanceof LoginRequiredError) {
+          publish({ phase: "login" });
+          return;
+        }
+        publish({ ...current, busy: false, error: error instanceof Error ? error.message : "톤 교정 요청에 실패했습니다." });
       }
     }
     function choose(template: Template) {
@@ -145,13 +153,16 @@ export function useMiniPopup(selector: string, getTemplates: StartPopupOptions["
         if (disposed || id !== requestId) return;
         if (!Array.isArray(result)) throw new Error("Invalid template list");
         const templates = searching ? result.filter((template) =>
-          `${template.title} ${template.shortcut} ${template.content}`
-            .normalize("NFC").toLocaleLowerCase().includes(match.query),
+          matchesShortcut(template.shortcut, match.query),
         ) : [...result].sort((a, b) => (Date.parse(b.lastUsedAt) || 0) - (Date.parse(a.lastUsedAt) || 0));
         templates.reverse();
         publish({ phase: "list", templates, active: searching ? 0 : -1, searching });
-      } catch {
+      } catch (error) {
         if (disposed || id !== requestId) return;
+        if (error instanceof LoginRequiredError) {
+          publish({ phase: "login" });
+          return;
+        }
         lastQuery = null;
         publish({ phase: "error", searching, message: "템플릿을 불러오지 못했습니다. 다시 입력해주세요." });
       }
@@ -168,6 +179,7 @@ export function useMiniPopup(selector: string, getTemplates: StartPopupOptions["
         lastQuery = null;
       }
       dismissed = false;
+      if (current.phase === "login") lastQuery = null;
       void refresh(true);
     }
     function onCompositionStart(event: Event) {
@@ -219,6 +231,7 @@ export function useMiniPopup(selector: string, getTemplates: StartPopupOptions["
     active: (state.phase === "list" || state.phase === "tones") ? state.active : 0,
     autoFocus: (state.phase === "list" || state.phase === "tones") && state.autoFocus,
     choosingTone: state.phase === "tones",
+    loginRequired: state.phase === "login",
     selectedTemplate: state.phase === "variables" ? state.template : null,
     message: "message" in state ? state.message : undefined,
     open: state.phase !== "closed",

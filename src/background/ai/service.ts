@@ -1,4 +1,5 @@
 import { snipTextApiOrigin } from "../../config/api";
+import { countCharacters, maxToneInputCharacters } from "../../common/tone-correction-input";
 import { requestApi } from "../common/api-client";
 import { isVendorName } from "../../config/vendors";
 import { service as editorService } from "../editor/service";
@@ -41,6 +42,9 @@ async function correctTone({ vendorName, tone, text: inputText, removeCommand = 
     ? status.text.replace(/[\\₩]톤(?:교(?:정)?)?\s*$/, "")
     : typeof inputText === "string" ? inputText : status.text;
   if (!text.trim()) throw new AiValidationError("교정할 본문을 작성해주세요.");
+  if (countCharacters(text) > maxToneInputCharacters) {
+    throw new AiValidationError(`${maxToneInputCharacters}자 이내로 작성하여주세요`);
+  }
 
   const result = await requestApi(`${snipTextApiOrigin}/api/v1/ai/tone-corrections`, "POST", { style, text });
   if (!result || typeof result !== "object" || !("correctedText" in result) ||

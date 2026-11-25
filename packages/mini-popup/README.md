@@ -1,9 +1,9 @@
-# @snip-text/mini-popup
+# snip-text-mini-popup
 
 contenteditable 에디터에서 `\` 단축어로 템플릿을 검색하고 변수 입력 후 삽입하는 React 팝업입니다. 확장 프로그램용 액션은 Chrome 메시지 API를 사용합니다.
 
 ```ts
-import { startPopup, type Template } from "@snip-text/mini-popup";
+import { startPopup, type Template } from "snip-text-mini-popup";
 
 const stopPopup = startPopup({
   selector: '[contenteditable="true"]',

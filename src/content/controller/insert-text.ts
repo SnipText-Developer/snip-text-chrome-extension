@@ -1,4 +1,4 @@
-import { encodeEditorText } from "../utils/editor-text";
+import { encodeEditorText, readEditorText } from "../utils/editor-text";
 
 export function insertTextToEditor(
   editor: HTMLElement | undefined | null,
@@ -11,7 +11,8 @@ export function insertTextToEditor(
     };
   }
 
-  const prevText = editor.textContent === "," ? "" : (editor.textContent ?? "");
+  const previous = readEditorText(editor);
+  const prevText = previous === "," ? "" : previous;
   const safeText = String(text ?? "");
 
   if (!safeText) {
@@ -21,7 +22,13 @@ export function insertTextToEditor(
     };
   }
 
-  const encodedText = encodeEditorText(safeText);
+  const doc = editor.ownerDocument;
+  const content = doc.createDocumentFragment();
+  encodeEditorText(safeText).split("\n").forEach((line, index) => {
+    if (index > 0) content.append(doc.createElement("br"));
+    if (line) content.append(doc.createTextNode(line));
+  });
+  const fallback = content.cloneNode(true);
 
   try {
     editor.focus();
@@ -37,25 +44,9 @@ export function insertTextToEditor(
       selection.addRange(range);
     }
 
-    const lines = encodedText.split("\n");
-
-    lines.forEach((line, index) => {
-      if (index > 0) {
-        const lineBreak = document.createElement("br");
-        range.insertNode(lineBreak);
-        range.setStartAfter(lineBreak);
-        range.setEndAfter(lineBreak);
-      }
-
-      if (!line) {
-        return;
-      }
-
-      const textNode = document.createTextNode(line);
-      range.insertNode(textNode);
-      range.setStartAfter(textNode);
-      range.setEndAfter(textNode);
-    });
+    range.insertNode(content);
+    range.selectNodeContents(editor);
+    range.collapse(false);
 
     if (selection) {
       selection.removeAllRanges();
@@ -70,7 +61,7 @@ export function insertTextToEditor(
     console.warn("Failed to insert text into editor:", error);
   }
 
-  editor.textContent = encodedText;
+  editor.replaceChildren(fallback);
 
   return {
     prevText,

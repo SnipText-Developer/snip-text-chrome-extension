@@ -79,9 +79,9 @@ export function TemplateVariablesForm({ dom, enabled, template, busy, onCancel, 
           <p className="variable-hint">모든 입력칸을 채워 주세요.</p>
         </div>
         <footer className="popup-footer variable-keys">
-          <span>Tab 다음 항목</span>
           <button type="submit" disabled={busy}>{busy ? "삽입 중…" : "Enter 삽입"}</button>
-          <button type="button" disabled={busy} onClick={onCancel}>Esc 닫기</button>
+          <span>Tab 다음 항목</span>
+          <span>Esc 닫기</span>
         </footer>
       </form>
     </>

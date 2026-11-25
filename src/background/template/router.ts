@@ -1,29 +1,33 @@
-import { isPageSender, isContentSender, isDashboardSender } from "../common/message-sender";
+import { isContentSender, isDashboardSender, isPageSender } from "../common/message-sender";
 import type { MessageRequest, MessageResponse } from "../../core/message-types";
 import { service, TemplateValidationError } from "./service";
 import { ApiError } from "../common/api-client";
+import { service as authService } from "../auth/service";
 
 type TemplateRequest = Pick<MessageRequest, "method" | "path"> &
   Partial<Pick<MessageRequest, "src" | "data">>;
 
-export const router = async (
+export async function router(
   req: TemplateRequest,
   sender: chrome.runtime.MessageSender,
-): Promise<MessageResponse | void> => {
+): Promise<MessageResponse | void> {
+  const pageSender = isPageSender(req, sender);
+  const dashboardSender = isDashboardSender(sender);
+  const contentSender = isContentSender(req, sender);
+
   try {
-    if (req.method === "POST" && req.path === "/template/refresh") {
-      if (!isPageSender(req, sender) && !isDashboardSender(sender)) {
-        return;
-      }
+    if (req.path === "/template/refresh" && req.method === "POST") {
+      if (!pageSender && !dashboardSender) return;
       if (!(await service.syncTemplates())) {
         return { statusCode: 400, data: { msg: "템플릿 API URL이 설정되지 않았습니다." } };
       }
       return { statusCode: 200, data: { refreshed: true } };
     }
 
-    if (req.method === "GET" && req.path === "/template/list") {
-      if (!isPageSender(req, sender) && !isContentSender(req, sender)) {
-        return;
+    if (req.path === "/template/list" && req.method === "GET") {
+      if (!pageSender && !contentSender) return;
+      if (contentSender && !(await authService.readLatest())) {
+        return { statusCode: 401, data: { msg: "로그인 후 다시 시도해주세요." } };
       }
 
       return {
@@ -32,11 +36,8 @@ export const router = async (
       };
     }
 
-    if (req.method === "PUT" && req.path === "/template/replace") {
-      if (!isPageSender(req, sender)) {
-        return;
-      }
-
+    if (req.path === "/template/replace" && req.method === "PUT") {
+      if (!pageSender) return;
       const template = await service.replaceTemplate(req.data);
       return template
         ? { statusCode: 200, data: { template } }
@@ -52,9 +53,7 @@ export const router = async (
       ? { statusCode: 400, data: { msg: error.message } }
       : {
           statusCode: 500,
-          data: {
-            msg: "템플릿 요청을 처리하지 못했습니다.",
-          },
+          data: { msg: "템플릿 요청을 처리하지 못했습니다." },
         };
   }
-};
+}

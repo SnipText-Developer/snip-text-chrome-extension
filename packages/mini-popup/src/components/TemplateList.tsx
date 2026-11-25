@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef } from "react";
 import type { MiniPopupDom } from "../dom/index";
 import { toneCommand } from "../commands";
 import type { Template } from "../types";
+import { formatShortcut } from "../utils/shortcut-search";
 
 interface Props {
   dom: MiniPopupDom;
@@ -44,14 +45,14 @@ export function TemplateList({
             className={template.templateId === toneCommand.templateId ? "reserved-command" : undefined}
             role="option"
             aria-selected={index === active}
-            aria-label={`${template.shortcut} ${template.title}`}
+            aria-label={`${formatShortcut(template.shortcut)} ${template.title}`}
             title={template.content}
             onFocus={() => onActiveChange(index)}
             onPointerMove={() => {
               if (active !== index) onActiveChange(index);
             }}
             onClick={() => onChoose(template)}>
-            <span className="template-command">{template.shortcut}</span>
+            <span className="template-command">{formatShortcut(template.shortcut)}</span>
             <span className="template-text">
               {template.content.replace(/\s+/g, " ")}
             </span>

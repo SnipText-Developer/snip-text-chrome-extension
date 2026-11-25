@@ -55,22 +55,3 @@
   background: #f7f8fa;
   border-color: #969ca7;
 }
-
-.login-button + .login-button {
-  margin-top: 8px;
-}
-
-.naver-login-mark {
-  color: #03a94d;
-  font-size: 20px;
-  font-weight: 900;
-  line-height: 1;
-}
-
-.login-continue {
-  margin-top: 14px;
-  padding: 6px;
-  background: transparent;
-  color: #4b5668;
-  text-decoration: underline;
-}

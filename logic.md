@@ -130,9 +130,9 @@ interface EditorStatus {
 }
 ```
 
-`background/editor/repository.ts`는 벤더별 `snip.GOOGLE`, `snip.NAVER` 키에 상태를 메모리로 보관합니다. 초기값은 편집 불가, 빈 본문, 빈 이전 본문 목록입니다.
+`background/editor/repository.ts`는 벤더별 상태를 `chrome.storage.session`의 `snip.editors`에 AES-256-GCM 암호문으로 보관합니다. 초기값은 편집 불가, 빈 본문, 빈 이전 본문 목록입니다.
 
-이 상태는 탭별·프레임별 저장이 아닙니다. 같은 벤더의 여러 탭이나 작성 창이 상태를 보고하면 하나의 벤더 상태를 공유합니다. Service Worker가 종료되면 상태도 사라집니다. `background/common/storage.ts`에 session storage 래퍼가 있지만 에디터 repository는 이 래퍼를 사용하지 않습니다.
+이 상태는 탭별·프레임별 저장이 아닙니다. 같은 벤더의 여러 탭이나 작성 창이 상태를 보고하면 하나의 벤더 상태를 공유합니다. 같은 브라우저 세션에서는 서비스 워커가 재시작해도 상태를 읽을 수 있습니다.
 
 ### 4.2 변경 감지
 
@@ -180,7 +180,7 @@ interface Template {
 }
 ```
 
-`GET /template/list`는 `200 { templates }`를 반환합니다. repository는 `chrome.storage.local`의 `snip.templates`를 읽고, 저장값이 없으면 빈 배열을 반환합니다.
+`GET /template/list`는 `200 { templates }`를 반환합니다. repository는 `chrome.storage.local`의 `snip.templates`를 읽고, 저장값이 없으면 빈 배열을 반환합니다. 공통 스토리지 모듈은 저장 시 고정 키로 AES-256-GCM을 적용합니다.
 
 과거 데이터의 `id`, `name`, `command`, `text`는 현재 필드로 변환합니다. 유효하지 않은 ID에는 사용 중인 ID를 피해서 양의 정수를 부여하고, 변수 목록이 없으면 본문에서 추출합니다. 날짜 정보가 없으면 `1970-01-01T00:00:00.000Z`를 기준으로 보완합니다. 이 변환은 조회 결과를 만드는 과정이며 조회만으로 원본을 다시 저장하지 않습니다.
 
@@ -222,7 +222,7 @@ CONTENT 요청은 `sender.tab.id`와 `sender.frameId`로 전달 대상을 지정
 2. `BACKGROUND → CONTENT` 삽입 메시지를 보냅니다.
 3. content 라우터는 문자열을 정규화하고 미치환 `{{...}}`가 남아 있으면 400으로 거부합니다.
 4. observer가 추적하는 에디터를 가져옵니다.
-5. `insertTextToEditor`가 기존 `textContent`를 이전 본문으로 보관하고 에디터 내용을 비웁니다.
+5. `insertTextToEditor`가 `<br>`와 문단 경계를 개행으로 읽어 이전 본문으로 보관하고 에디터 내용을 비웁니다.
 6. 새 본문을 텍스트 노드와 `<br>`로 구성하고 커서를 끝에 둡니다.
 7. content가 `prevText`, `text`, `isInserted`, `vendorName`을 반환합니다.
 8. background는 반환된 본문과 이전 본문을 저장한 뒤 PAGE에 상태를 알립니다.
@@ -238,13 +238,13 @@ CONTENT 요청은 `sender.tab.id`와 `sender.frameId`로 전달 대상을 지정
 - `normalizeEditorText`: U+200B를 제거하고 Unicode NFC로 정규화합니다. 다른 공백과 이모지 결합 문자는 유지합니다.
 - `encodeEditorText`: CRLF를 LF로 바꾸고 줄 양끝 공백과 연속된 일반 공백을 NBSP로 변환해 HTML 에디터에서 공백이 접히는 것을 줄입니다.
 
-삽입은 `innerHTML` 대신 텍스트 노드를 사용하므로 HTML 형태의 입력도 문자로 삽입합니다. Range 처리가 실패하면 같은 인코딩을 적용한 `textContent` 대입으로 대체합니다. 이 대체 경로는 `<br>`를 만들지 않습니다. 현재 함수는 별도의 `input` 이벤트를 발생시키지 않으므로 메일 서비스의 입력 인식과 실행 취소 동작은 실제 브라우저에서 확인해야 합니다.
+삽입은 `innerHTML` 대신 텍스트 노드를 사용하므로 HTML 형태의 입력도 문자로 삽입합니다. Range 처리가 실패하면 같은 텍스트 노드와 `<br>`로 본문을 교체합니다. 현재 함수는 별도의 `input` 이벤트를 발생시키지 않으므로 메일 서비스의 입력 인식과 실행 취소 동작은 실제 브라우저에서 확인해야 합니다.
 
 ## 7. mini-popup
 
 ### 7.1 패키지와 상태 분리
 
-`@snip-text/mini-popup`은 메일 문서에 호스트와 React root를 생성합니다. `startPopup`은 이를 제거하는 정리 함수를 반환합니다.
+`snip-text-mini-popup`은 메일 문서에 호스트와 React root를 생성합니다. `startPopup`은 이를 제거하는 정리 함수를 반환합니다.
 
 | 파일·영역 | 역할 |
 | --- | --- |
@@ -264,7 +264,7 @@ CONTENT 요청은 `sender.tab.id`와 `sender.frameId`로 전달 대상을 지정
 
 트리거를 찾으면 에디터, Range, 트리거 원문을 보관합니다. 삽입 전에 에디터가 문서에 연결되어 있고 Range가 같은 트리거를 가리키는지 확인합니다. 메일 페이지가 DOM을 다시 만들면 재입력을 안내합니다.
 
-일반 검색은 background에서 목록을 가져와 제목·단축어·본문의 NFC 정규화 및 소문자 검색으로 필터링합니다. 톤 교정 접두사를 입력하면 전용 명령을 먼저 표시합니다.
+일반 검색은 background에서 목록을 가져와 단축어의 첫 접두사 문자를 제외하고, NFC와 소문자로 정규화한 단축어가 검색어로 시작하는 항목을 표시합니다. 톤 교정 접두사를 입력하면 전용 명령을 먼저 표시합니다.
 
 ### 7.3 화면 상태와 비동기 처리
 
@@ -340,11 +340,11 @@ CONTENT 요청은 `sender.tab.id`와 `sender.frameId`로 전달 대상을 지정
 | PUT | `/auth/token` | `{ vendor, token, expiresAt? }` | 기존 토큰 교체, 없으면 404 |
 | DELETE | `/auth/token` | `{ vendor }` | 삭제 여부 `{ deleted }` 반환 |
 
-만료 시각은 epoch 밀리초입니다. 생략하면 5분이고, 입력해도 현재부터 최대 5분으로 제한됩니다. token은 비어 있지 않은 문자열이어야 합니다.
+만료 시각은 epoch 밀리초입니다. 생략하면 5분이고, 5분보다 가까운 만료 시각을 입력하면 현재부터 5분으로 조정합니다. token은 비어 있지 않은 문자열이어야 합니다.
 
-repository는 암호문, 만료 시각, 삭제 타이머를 메모리 Map에 보관합니다. 타이머로 제거하고 조회 시에도 만료를 다시 검사합니다. 복호화 실패 시 해당 토큰을 삭제합니다. 워커 종료 후 복원하거나 자동 갱신하지 않습니다.
+인증 레포지터리는 토큰과 만료 시각을 `chrome.storage.session`의 `snip.auth.tokens`에 암호문으로 보관합니다. 같은 브라우저 세션에서는 서비스 워커가 재시작해도 복원합니다. 워커가 실행 중이면 타이머로 만료 토큰을 삭제하며, 조회 시에도 만료를 검사합니다. 복호화에 실패하면 저장된 토큰 목록을 삭제합니다.
 
-`token-crypto.ts`는 AES-256-GCM과 매 암호화마다 생성하는 12바이트 IV를 사용합니다. vendor와 만료 시각은 추가 인증 데이터로 묶습니다. webpack은 빌드마다 32바이트 난수 키를 생성해 번들 상수로 주입합니다. 이 키는 배포 번들에서 확인할 수 있으므로 사용자에게 숨겨진 서버 비밀키로 취급할 수 없습니다. CRUD 응답에는 평문 토큰이 포함될 수 있으며 content에 전달하지 않습니다.
+공통 스토리지 모듈은 AES-256-GCM과 매 암호화마다 생성한 12바이트 IV를 사용합니다. 저장 영역과 저장 키는 추가 인증 데이터로 묶습니다. webpack은 모든 빌드에 같은 32바이트 키를 주입합니다. 이 키는 배포 번들에서 확인할 수 있으므로 사용자에게 숨겨진 서버 비밀키로 취급할 수 없습니다. CRUD 응답에는 평문 토큰이 포함될 수 있으며 content에 전달하지 않습니다.
 
 ## 11. 벤더 설정과 빌드
 
@@ -365,7 +365,7 @@ sidebar는 `packages/sidebar/src/config/vendors.ts`에서 자체 벤더 정의�
 
 다음 항목은 현재 코드의 동작과 미완성 부분을 구분하기 위한 기준입니다.
 
-- 템플릿은 local 저장소에 남지만 에디터 상태와 토큰은 워커 메모리에만 있습니다.
+- 템플릿은 Chrome local 저장소에, 인증 토큰과 에디터 상태는 Chrome session 저장소에 보관합니다.
 - 에디터 상태는 벤더별이며 탭별·프레임별로 분리되어 있지 않습니다.
 - 삽입은 본문 전체를 교체하며 `/검색어`만 교체하지 않습니다.
 - 빈 변수값은 placeholder를 유지하고, 남은 placeholder는 삽입 단계에서 거부됩니다.

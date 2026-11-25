@@ -114,11 +114,7 @@ const updateText = async (
   assertVendorName(vendorName);
   assertText(text);
   assertText(prevText);
-  if (prevText.length > 0) {
-    await addPrevText(vendorName, prevText);
-  }
-
-  const response = await repository.update(vendorName, { text });
+  const response = await repository.update(vendorName, { text }, prevText || undefined);
   if (!response) {
     return;
   }

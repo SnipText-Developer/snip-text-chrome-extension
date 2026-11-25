@@ -1,4 +1,4 @@
-import { startPopup } from "@snip-text/mini-popup";
+import { startPopup } from "snip-text-mini-popup";
 import { apiConfig } from "../../../config/api";
 import { EditorMutationObserver } from "./observer/editor-mutation-observer";
 import { EditorPollingObserver } from "./observer/editor-polling-observer";
@@ -65,6 +65,7 @@ function startEditorObserver({
   observer.start();
   startPopup({
     selector,
+    loginUrl: apiConfig.loginUrl,
     newTemplateUrl: apiConfig.newTemplateUrl,
     vendorName,
     getEditorStatus: () => observer.getEditorStatus(),

@@ -1,6 +1,7 @@
 import InsertBodyButton from "./InsertBodyButton";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getTemplateVariables, getTemplateContent } from "../common/template-content";
+import { formatShortcut } from "../common/template-search";
 import type { Template } from "../core/data-types";
 import "./TemplateInsertPage.css";
 
@@ -67,7 +68,7 @@ export default function TemplateInsertPage({ onNotify: setCopyNotice, template, 
       </header>
       <div className="template-insert-summary">
         <h2>{template.title}</h2>
-        {template.shortcut && <span className="template-insert-shortcut">{template.shortcut}</span>}
+        {template.shortcut && <span className="template-insert-shortcut">{formatShortcut(template.shortcut)}</span>}
       </div>
       <section className="template-insert-content" aria-labelledby="template-content-title">
         <h3 id="template-content-title">템플릿 내용</h3>

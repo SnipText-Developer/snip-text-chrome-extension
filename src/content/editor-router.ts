@@ -1,20 +1,18 @@
 import { listenMessage } from "../common/message-bus";
 import type { MessageRequest, MessageResponse } from "../core/message-types";
 import { insertTextToEditor } from "./controller/insert-text";
-import { normalizeEditorText } from "./utils/editor-text";
+import { readEditorText } from "./utils/editor-text";
+import { normalizeEditorText } from "./utils/normalize-editor-text";
 import type { EditorVendorName } from "../core/data-types";
-import type { EditorStatus } from "../core/data-types";
 
 export interface EditorMessageRouterOptions {
   vendorName: EditorVendorName;
   getEditor: () => HTMLElement | null | undefined;
-  getEditorStatus: () => Partial<EditorStatus> | null;
 }
 
 export function createEditorRouter({
   vendorName,
   getEditor,
-  getEditorStatus,
 }: EditorMessageRouterOptions) {
   return async (req: MessageRequest): Promise<MessageResponse | void> => {
     if (req.src !== "BACKGROUND" || req.dst !== "CONTENT") {
@@ -52,7 +50,7 @@ export function createEditorRouter({
         statusCode: 200,
         data: {
           prevText,
-          text: getEditorStatus()?.text ?? "",
+          text: normalizeEditorText(readEditorText(editor)),
           isInserted,
           vendorName,
         },

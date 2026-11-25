@@ -17,6 +17,7 @@ export function startPopup(options: StartPopupOptions | ConnectedPopupOptions): 
   root.render(
     <MiniPopup
       selector={selector}
+      loginUrl={options.loginUrl}
       newTemplateUrl={options.newTemplateUrl}
       getTemplates={getTemplates}
       insertText={insertText}

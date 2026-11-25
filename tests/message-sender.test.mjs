@@ -13,7 +13,7 @@ function mockChrome(t) {
   const previous = globalThis.chrome;
   globalThis.chrome = {
     runtime: { id: "extension", getURL: (path) => "chrome-extension://extension/" + path },
-    storage: { local: { get: async () => ({ "snip.templates": [] }) } },
+    storage: { local: { get: async () => ({}) } },
   };
   t.after(() => { globalThis.chrome = previous; });
 }
