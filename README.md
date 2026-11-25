@@ -1,183 +1,47 @@
-# Chrome Extension
+# Snip Text Chrome Extension
 
-Chrome 브라우저에서 동작하는 확장 프로그램입니다.
+Gmail과 네이버 메일에서 단축어로 템플릿을 불러오고, Chrome 사이드바에서 템플릿 검색·복사와 AI 톤 교정을 사용할 수 있는 확장 프로그램입니다.
 
-## 요구 사항
+## 빌드 및 설치
 
-Google Chrome
-
-Node.js 20.x 이상
-
-npm 10.x 이상
-
-## 실행방법
-
-### sh
+Google Chrome, Node.js 24.15 이상인 24.x 버전, npm이 필요합니다. 이 Node.js 버전은 현재 빌드 도구와 jsdom 테스트의 요구 사항을 모두 충족합니다.
 
 ```sh
-git clone https://github.com/j93es/snip-text-chrome-extension.git
-cd snip-text-chrome-extension
-
-npm install
+npm ci
 npm run build
 ```
 
-빌드가 완료되면 dist/ 디렉터리에 확장 프로그램을 설치할 수 있는 결과물이 생성됩니다.
+1. Chrome에서 `chrome://extensions`를 열고 **개발자 모드**를 켭니다.
+2. **압축해제된 확장 프로그램을 로드**에서 프로젝트의 `dist/`를 선택합니다.
+3. 코드를 수정한 뒤에는 다시 빌드하고 확장 프로그램을 새로고침합니다. 이미 열려 있는 Gmail·네이버 메일 탭도 새로고침합니다.
 
-project/
-├── src/ # 확장 프로그램 소스 코드
-├── public/ # 정적 리소스 및 manifest 등
-├── dist/ # 빌드 결과물
-├── package.json
-└── README.md
+빌드 단계, API 설정, 테스트 명령과 확장 프로그램 압축 방법은 [빌드 가이드](docs/build.md)에 있습니다.
 
-## Chrome에 설치
+## 사용 방법
 
-빌드가 완료된 후 Chrome에서 다음 순서로 확장 프로그램을 설치합니다.
+### 메일에서 템플릿 불러오기
 
-1. Chrome에서 chrome://extensions를 엽니다.
+1. Gmail 또는 네이버 메일 작성 본문에서 역슬래시(`\`)를 입력합니다. 커서 아래에 목록이 표시됩니다.
+2. 단축어의 앞부분을 이어서 입력해 검색합니다. ↑↓로 이동하고 Enter 또는 마우스 클릭으로 선택합니다.
+3. 변수가 있는 템플릿은 모든 값을 채우고 Enter 또는 삽입 버튼을 누릅니다. Tab은 다음 입력칸으로 이동합니다. Esc는 이전 목록으로 돌아가면서 메일 본문의 포커스와 커서를 복원합니다.
 
-2. 우측 상단의 개발자 모드를 활성화합니다.
+일반 목록은 바깥을 클릭하거나 편집기에서 트리거 문자를 지우면 닫힙니다. 템플릿 삽입에 성공하면 현재 메일 본문 전체가 선택한 텍스트로 교체됩니다.
 
-3. 압축해제된 확장 프로그램을 로드를 선택합니다.
+### AI 톤 교정
 
-4. 프로젝트의 dist/ 디렉터리를 선택합니다.
+본문과 함께 `\톤교정`을 입력하고 명령을 선택합니다. 문체 선택 메뉴에서는 ↑↓←→로 이동하고 Enter로 교정을 요청합니다. Esc를 누르면 이전 목록과 메일 본문 포커스가 복원됩니다. 교정 요청이 진행 중이면 응답을 기다립니다. 교정 중 본문이나 삽입 대상이 바뀌면 결과를 삽입하지 않습니다.
 
-5. 확장 프로그램이 목록에 표시되는지 확인합니다.
+### 사이드바
 
-6. 코드를 수정한 경우, 다시 빌드한 후 Chrome 확장 프로그램 관리 화면에서 업데이트 버튼을 눌러 변경 사항을 반영합니다.
+확장 프로그램 아이콘을 클릭하면 사이드바가 열립니다. 로그인은 새 탭의 Snip Text 로그인 페이지에서 진행합니다. 로그인 후 템플릿 검색·복사, 변수 미리보기, 메일 본문 삽입과 AI 톤 교정을 사용할 수 있습니다. 새 템플릿은 Snip Text의 웹 페이지에서 작성합니다.
 
-## 스마트 템플릿 선택
+## 개발 문서
 
-Gmail 또는 네이버 메일 본문에서 `\`를 입력하면 커서 아래에 작은 템플릿 목록이 표시됩니다. 아래 공간이 부족하면 위에 표시됩니다. `\` 뒤에 단축어의 첫 글자부터 입력해 검색하고, 마우스 클릭 또는 ↑↓와 Enter로 선택하세요. Esc로 닫을 수 있습니다. 선택 시 `\검색어`만 템플릿 내용으로 바뀌고 나머지 본문은 유지됩니다.
+| 문서 | 확인할 내용 |
+| --- | --- |
+| [빌드 가이드](docs/build.md) | workspace 빌드, Chrome 설치, 설정, 테스트 |
+| [동작 구조](logic.md) | content·background·sidebar 연결, 미니 팝업 훅, 삽입 흐름 |
+| [메시지 API 명세](api.md) | 발신자 검증, 인증, 템플릿, 편집기, 톤 교정 요청과 응답 |
+| [mini-popup 패키지](packages/mini-popup/README.md) | `startPopup` 사용법, 키보드 동작, 내부 구조 |
 
-템플릿 목록은 `src/background/template/repository.ts`에서 관리하며, 사이드바와 메일 단축어 팝업이 `GET /template/list` 메시지로 조회합니다.
-
-템플릿에 `{{변수}}`가 있으면 선택 후 변수 입력 폼이 표시됩니다. 같은 이름의 변수는 한 번만 입력하며, 삽입 버튼 또는 Enter로 값을 반영합니다. 빈 입력값은 빈 문자열로 치환됩니다. 취소하거나 Esc를 누르면 본문은 변경되지 않습니다. `/4` 문의 접수 안내에서 사용할 수 있습니다.
-
-변수 입력 폼의 미리보기는 입력할 때마다 갱신되며, 삽입될 텍스트와 동일한 내용을 줄바꿈과 함께 보여줍니다.
-
-### 템플릿 사이드바
-
-확장 프로그램 아이콘을 클릭하면 템플릿 화면을 열 수 있습니다.
-background에서 조회한 템플릿을 표시하며, 이름·단축어로 검색하고 내용을 복사할 수 있습니다. 각 템플릿의 ‘메일 본문에 삽입’ 버튼으로 활성 탭의 Gmail 또는 네이버 메일 작성 창에 내용을 넣을 수 있습니다.
-
-### 템플릿 수정
-
-page에서 `PUT /template/replace` 메시지를 background로 보내면 templateId에 해당하는 템플릿 전체를 덮어씁니다.
-
-```ts
-await sendMessage({
-  src: "PAGE",
-  dst: "BACKGROUND",
-  method: "PUT",
-  path: "/template/replace",
-  data: {
-    templateId: 1, title: "일정 안내", shortcut: "/일정", content: "회의 일정을 안내드립니다.",
-    variables: [], lastUsedAt: "2026-10-07T09:12:00+09:00",
-    createdAt: "2026-09-20T14:03:00+09:00", editedAt: "2026-10-01T11:40:00+09:00",
-  },
-});
-```
-
-`templateId`(양의 정수), `title`, `shortcut`, `content`, `variables`, `lastUsedAt`, `createdAt`, `editedAt`를 모두 전달해야 합니다. 변수 배열은 본문의 `{{변수}}`와 일치해야 하며, 날짜는 시간대가 포함된 ISO 8601 문자열입니다. 필드가 빠진 요청은 거부하며, 기존 필드와 병합하지 않습니다. 이름·단축어·본문은 비워둘 수 없으며, 단축어는 중복 없이 `/`로 시작하고 공백을 포함하지 않아야 합니다. 수정 내용은 background가 `chrome.storage.local`에 보관합니다.
-
-성공 시 `200 { template }`, 잘못된 입력은 `400`, 허용되지 않은 발신자의 요청은 응답 없이 무시하며, 없는 ID는 `404`, 저장 실패는 `500`을 반환합니다.
-검증: `node --test tests/template.test.mjs`.
-
-### 사이드바 로그인
-
-사이드바를 열거나 다시 포커스하면 백그라운드에 저장된 유효한 API 토큰이 있는지 확인합니다. 토큰이 있으면 템플릿을 열고, 없으면 로그인 화면을 표시합니다.
-
-Google 또는 네이버 로그인 버튼을 누르면 새 탭에서 대시보드를 엽니다. 이동 주소는 `packages/sidebar/src/config.ts`의 `dashboardUrl`에서 설정합니다. 기본값은 `https://sniptext.kr/`이며 로그인은 대시보드에서 진행합니다. 사이드바에서 바로 템플릿을 보려면 **템플릿 보기**를 선택합니다.
-
-### 인증 토큰 CRUD
-
-확장 프로그램 page에서 `/auth/token` 경로를 사용합니다.
-
-- POST: `{ vendor, token, expiresAt? }`로 생성. 이미 있으면 400.
-- GET: `{ vendor }`로 조회. 복호화한 `{ vendor, token }` 반환. 없으면 404.
-- PUT: `{ vendor, token, expiresAt? }`로 기존 토큰 교체. 없으면 404.
-- DELETE: `{ vendor }`로 삭제. `{ deleted }` 반환.
-
-vendor는 `google` 또는 `naver`입니다. 허용되지 않은 발신자는 응답 없이 무시합니다. 조회 응답에 토큰이 포함되므로 content script로 전달하지 마세요.
-
-백그라운드 레포지터리는 AES-256-GCM을 사용합니다. webpack은 모든 빌드에 같은 32바이트 키를 주입하며, 암호화할 때마다 새 IV를 생성합니다. 고정 키는 확장 프로그램 번들에서 확인할 수 있습니다.
-
-토큰과 만료 시각은 Chrome 세션 저장소에 암호문으로 보관합니다. 서비스 워커가 재시작해도 같은 브라우저 세션에서 유효한 토큰을 읽을 수 있습니다. 만료 시각은 epoch 밀리초이며, 생략하면 5분 후에 만료됩니다. 지정한 시각이 5분보다 가까우면 5분으로 조정합니다.
-
-사이드바는 background에서 받은 순서대로 템플릿을 표시합니다.
-
-새 템플릿 버튼의 이동 주소는 `packages/sidebar/src/config.ts`의 `pageConfig.newTemplateUrl`에 전체 HTTP(S) URL로 지정합니다. 설정 후 다시 빌드하면 버튼 클릭 시 현재 페이지가 해당 URL로 이동합니다. 주소가 비어 있으면 버튼을 비활성화합니다.
-
-### React 템플릿 팝업
-
-콘텐츠 스크립트의 `packages/mini-popup/src/index.tsx`는 일반 DOM 컨테이너와 React root만 생성합니다. `useMiniPopup`이 React 상태·메시지 조회·키보드·포커스 이벤트를 관리하고, `usePopupPosition`이 위치 계산과 스크롤·리사이즈 이벤트를 처리합니다. `MiniPopup.tsx`, `TemplateList.tsx`, `TemplateVariablesForm.tsx`가 UI를 담당합니다. 스타일은 `styles/normalize.css`, `styles/common.css`와 컴포넌트별 CSS를 문자열로 번들에 포함해 React의 `<style>`로 적용합니다. 모든 CSS 선택자는 `#snip-text-mini-popup` 내부로 제한합니다. `dom/index.ts`가 DOM 접근의 단일 진입점이며 에디터·팝업·위치·이벤트·호스트 수명주기를 기능별 모듈로 분리합니다. 커서 상태와 직접적인 DOM 조작은 이 계층 내부에서 관리하고, `utils/text.ts`는 변수 추출·치환을 담당합니다. 공백·개행 인코딩은 `src/content/utils/editor-text.ts`의 `encodeEditorText`로 통일해 실제 삽입 직전에 적용합니다.
-
-팝업은 이벤트 전파를 차단하지 않습니다. 목록의 방향키·Enter·Esc만 처리하고, 변수 입력과 Tab 이동은 브라우저 기본 동작을 사용합니다. 테스트는 `node --test tests/mini-popup.test.mjs`로 실행하며 목록 선택, 변수 입력, 한글 조합 입력, 취소와 비동기 응답 경합, 언마운트 후 리스너 정리를 확인합니다.
-
-
-### 텍스트 삽입 테스트
-
-`npm run test:insert-text`로 `insertTextToEditor`와 공통 공백·개행 인코딩을 검증합니다. 한글·다국어·이모지·결합 문자·HTML/엔티티 문자열·특수 공백·개행·긴 본문·커서 위치·예외 경로를 포함합니다. jsdom 기반 DOM 테스트이며 실제 메일 편집기의 렌더링과 실행 취소 동작은 별도 브라우저 확인이 필요합니다. Range 삽입 실패 시에도 텍스트 노드와 `<br>`로 본문을 교체합니다.
-
-### mini-popup 패키지
-
-`packages/mini-popup`은 독립 React 패키지 `snip-text-mini-popup`입니다. Chrome API 호출은 사용처에서 주입합니다. `npm run build:popup`으로 ESM 번들과 타입 선언을 생성하며, 전체 `npm run build`에서도 먼저 빌드합니다.
-
-```ts
-import { startPopup } from "snip-text-mini-popup";
-
-const stopPopup = startPopup({
-  selector: '[contenteditable="true"]',
-  getTemplates: async () => templates,
-  insertText: async (text) => insertThroughBackground(text),
-});
-
-// 팝업, React root, 이벤트 리스너 정리
-stopPopup();
-```
-
-React와 React DOM은 일반 의존성입니다. 스타일은 번들에 포함되어 별도 CSS 로딩 없이 팝업 컨테이너 내부에만 적용됩니다. 외부 npm 레지스트리에 배포하지 않은 로컬 workspace 패키지입니다.
-
-
-mini-popup의 삽입은 주입된 콜백을 통해 background의 `/editor/insert-text`를 호출합니다. 실제 DOM 치환은 콘텐츠 스크립트의 `src/content/controller/insert-text.ts`로 모았습니다. 텍스트만 요청하며, 요청을 보낸 탭·프레임에서 기존 API 동작대로 본문 전체를 교체합니다.
-
-### 사이드바 패키지
-
-사이드바 React 앱은 `packages/sidebar`의 npm workspace 패키지 `snip-text-sidebar`에서 관리합니다. 개발은 `npm run dev`, 린트는 `npm --workspace snip-text-sidebar run lint`, 빌드는 `npm run build:sidebar`를 사용합니다. 전체 빌드에도 포함됩니다.
-
-사이드바의 결과물은 확장 프로그램의 기존 `dist/src/page/`에 복사합니다. manifest의 사이드바 경로와 background의 PAGE 발신자 검증 URL은 그대로 사용합니다. 의존성은 루트 `package-lock.json`으로 관리합니다.
-
-템플릿 복사·메일 삽입에 성공하면 `PUT /template/use`에 `{ templateId }`를 보내 `lastUsedAt`을 갱신합니다. `editedAt`은 유지합니다. 단축어 팝업도 `startPopup`의 `onInserted` 콜백으로 같은 경로를 호출합니다. 사이드바는 저장소 변경 시 background에서 목록을 다시 조회하여 정렬을 반영합니다.
-
-사이드바 검색창 아래에는 ‘AI 톤교정’, ‘새 템플릿’ 버튼을 표시합니다. 이동 주소는 `packages/sidebar/src/config.ts`의 `toneCorrectionUrl`, `newTemplateUrl`에 지정하며, 설정하지 않은 버튼은 비활성화합니다.
-
-사이드바에서 `{{변수}}`가 있는 템플릿의 삽입 버튼을 누르면 변수 입력 화면을 표시합니다. 본문의 변수명을 중복 없이 추출하고 미리보기를 실시간 갱신합니다. ‘메일 본문에 삽입’으로 치환된 본문을 삽입하며 빈 입력값은 빈 문자열로 처리합니다. 닫기·Esc는 삽입 없이 목록으로 돌아가며, 실패 시 입력값을 유지합니다. 에디터가 입력 불가 상태이면 삽입 버튼도 비활성화됩니다.
-
-
-### 벤더 설정 관리
-
-확장 프로그램은 `src/config/vendors.json`에서 벤더 ID, 이름, 메일 도메인, 작성 경로, 에디터 선택자, 콘텐츠 스크립트 이름을 관리합니다. `src/config/vendors.ts`가 벤더 타입·검증·URL 판별 함수를 제공하며, background와 content에서 사용합니다. 콘텐츠 스크립트 도메인과 프레임 옵션은 `public/manifest.json`에서, 빌드 진입점은 `webpack.config.cjs`와 `vite.config.ts`에서 명시적으로 관리합니다. manifest는 별도 생성 과정 없이 빌드 결과에 복사합니다.
-
-sidebar는 `packages/sidebar/src/config/vendors.ts`에서 로그인 표시, 메일 도메인, 벤더 타입·검증을 독립적으로 관리합니다. 다른 프로젝트의 소스를 import하지 않습니다. 벤더를 추가할 때는 확장 프로그램 정의, 콘텐츠 스크립트 진입 파일, manifest 등록과 빌드 진입점을 추가하고, sidebar에서 지원할 벤더도 패키지 내부 설정에 등록합니다. 메시지의 벤더 ID는 양쪽에서 동일하게 사용해야 합니다.
-
-`node --test tests/vendors.test.mjs`로 벤더 판별, 유사 도메인 차단, 작성 경로, 빌드 등록을 검증합니다.
-
-
-CONTENT 요청은 등록된 HTTPS 메일 URL에서 허용합니다. 예외는 Chrome의 `sender.origin`이 같은 허용 도메인인 `about:blank` 하위 프레임(`frameId > 0`)뿐입니다. `about:srcdoc`·`blob:`·`data:`·`filesystem:`은 허용하지 않습니다. `node --test tests/message-sender.test.mjs`로 송신자 검증과 템플릿 조회 권한을 확인합니다.
-
-### 초기 템플릿 API 설정
-
-`src/config/api.ts`의 `apiConfig.templatesUrl`에 GET API URL을 지정합니다.
-다른 출처의 API를 사용하려면 `public/manifest.json`의 `host_permissions`와 `content_security_policy.extension_pages`의 `connect-src`에 해당 서버를 허용합니다.
-예: `"host_permissions": ["https://api.example.com/*"]`.
-설정 후 다시 빌드하고 확장 프로그램을 새로고침합니다.
-
-응답은 배열 `[...]` 또는 `{ "templates": [...] }`을 지원합니다.
-서버 DTO의 `templateId`는 숫자 또는 양의 정수 문자열을 사용할 수 있습니다.
-`title`, `shortcut`, `content`는 필수입니다. 생략한 `variables`는 본문에서 추출하며,
-생략한 날짜는 epoch를 사용합니다. localhost 호스트 권한은 기본으로 포함되어 있습니다.
-서비스 워커의 첫 템플릿 요청에서 조회하여 로컬 목록 전체를 교체합니다. 빈 배열은 목록을 비웁니다.
-첫 템플릿 요청은 초기 조회가 끝날 때까지 기다립니다. URL이 비어 있으면 조회하지 않습니다.
-API 조회가 실패하면 기존 로컬 목록을 유지하고 다음 요청에서 재시도합니다. 저장된 목록이 없으면 빈 목록을 반환합니다.
+`src/`는 background와 콘텐츠 스크립트, `public/`은 manifest와 아이콘, `packages/`는 mini-popup과 sidebar workspace를 담고 있습니다. Chrome에 로드하는 결과물은 `dist/`에 생성됩니다.

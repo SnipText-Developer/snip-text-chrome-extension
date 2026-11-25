@@ -6,18 +6,27 @@ import { join, relative } from "node:path";
 
 const root = fileURLToPath(new URL("../packages/mini-popup/src/", import.meta.url));
 
-test("mini-popup keeps imperative DOM access behind dom/index.ts", () => {
+test("mini-popup keeps imperative DOM access in the entry point and designated hooks", () => {
   function check(directory) {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      if (entry.name === "dom") continue;
       const path = join(directory, entry.name);
       if (entry.isDirectory()) { check(path); continue; }
       if (!/\.tsx?$/.test(entry.name)) continue;
       const source = readFileSync(path, "utf8");
       const label = relative(root, path);
-      assert.doesNotMatch(source, /\b(?:document|window)\s*\./, label + ": global DOM access");
-      assert.doesNotMatch(source, /\.(?:querySelectorAll?|closest|getBoundingClientRect|focus|scrollIntoView|addEventListener|removeEventListener|preventDefault|stopPropagation)\s*\(/, label + ": direct DOM operation");
-      assert.doesNotMatch(source, /from\s+["'][^"']*\/dom\/(?!index["'])/, label + ": internal DOM module import");
+      if (label !== "index.tsx") {
+        assert.doesNotMatch(source, /\b(?:document|window)\s*\./, label + ": global DOM access");
+      }
+      const allowedOperations = {
+        "hooks/editor/editor-anchor.ts": /\.(?:closest|getBoundingClientRect)\s*\(/g,
+        "hooks/editor/useEditorAnchor.ts": /\.(?:closest|focus)\s*\(/g,
+        "hooks/editor/useEditorEvents.ts": /\.addEventListener\s*\(/g,
+        "hooks/popup/usePopupPosition.ts": /\.(?:addEventListener|removeEventListener)\s*\(/g,
+        "hooks/popup/usePopupEventIsolation.ts": /\.(?:addEventListener|closest|preventDefault|stop(?:Immediate)?Propagation)\s*\(/g,
+        "hooks/template/useTemplateVariables.ts": /\.preventDefault\s*\(/g,
+      }[label];
+      const checkedSource = allowedOperations ? source.replace(allowedOperations, "(") : source;
+      assert.doesNotMatch(checkedSource, /\.(?:querySelectorAll?|closest|getBoundingClientRect|focus|scrollIntoView|addEventListener|removeEventListener|preventDefault|stop(?:Immediate)?Propagation)\s*\(/, label + ": direct DOM operation");
     }
   }
   check(root);
@@ -25,37 +34,27 @@ test("mini-popup keeps imperative DOM access behind dom/index.ts", () => {
 
 
 test("popup always stays below the cursor and limits its height to the remaining space", async () => {
-  const { JSDOM } = await import("jsdom");
   const { moduleUrl } = await import("./module-url.mjs");
-  const { positionPopup } = await import(moduleUrl("../packages/mini-popup/src/dom/popup.ts"));
-  const dom = new JSDOM('<div id="host"><div id="popup"></div></div>');
-  try {
-    const host = dom.window.document.querySelector("#host");
-    const popup = dom.window.document.querySelector("#popup");
-    Object.defineProperties(popup, { offsetWidth: { value: 260 }, offsetHeight: { value: 200 } });
-    // A partially collapsed animation must not affect the placement calculation.
-    popup.getBoundingClientRect = () => ({ width: 10, height: 5 });
-    positionPopup(host, popup, { left: 100, top: 700, bottom: 720 });
-    assert.equal(host.style.top, "726px");
-    assert.equal(host.style.getPropertyValue("--genie-x"), "0px");
-    assert.equal(host.style.getPropertyValue("--genie-y"), "-6px");
-    assert.equal(host.style.getPropertyValue("--popup-available-height"), "34px");
-    positionPopup(host, popup, { left: 100, top: 100, bottom: 120 });
-    assert.equal(host.style.top, "126px");
-    assert.equal(host.style.getPropertyValue("--popup-available-height"), "634px");
-    positionPopup(host, popup, { left: 2, top: 100, bottom: 120 });
-    assert.equal(host.style.getPropertyValue("--genie-x"), "-6px", "Viewport padding must not shift the cursor anchor");
-    positionPopup(host, popup, { left: 1000, top: 100, bottom: 120 });
-    assert.equal(parseFloat(host.style.left) + parseFloat(host.style.getPropertyValue("--genie-x")), 1000);
-  } finally {
-    dom.window.close();
-  }
+  const { calculatePopupPosition } = await import(moduleUrl("../packages/mini-popup/src/utils/popup-position.ts"));
+  const measure = (left, bottom) => calculatePopupPosition({ left, bottom }, 260, 1024, 768);
+  let position = measure(100, 720);
+  assert.equal(position.top, 726);
+  assert.equal(position["--genie-x"], "0px");
+  assert.equal(position["--genie-y"], "-6px");
+  assert.equal(position["--popup-available-height"], "34px");
+  position = measure(100, 120);
+  assert.equal(position.top, 126);
+  assert.equal(position["--popup-available-height"], "634px");
+  position = measure(2, 120);
+  assert.equal(position["--genie-x"], "-6px", "Viewport padding must not shift the cursor anchor");
+  position = measure(1000, 120);
+  assert.equal(position.left + parseFloat(position["--genie-x"]), 1000);
 });
 
 test("popup anchor follows the caret end rather than the backslash start", async () => {
   const { JSDOM } = await import("jsdom");
   const { moduleUrl } = await import("./module-url.mjs");
-  const { createEditorDom } = await import(moduleUrl("../packages/mini-popup/src/dom/editor.ts"));
+  const { findEditorAnchor, getEditorAnchorBounds } = await import(moduleUrl("../packages/mini-popup/src/hooks/editor/editor-anchor.ts"));
   const dom = new JSDOM('<div id="editor" contenteditable="true" tabindex="0">\\template</div>');
   const previousNode = globalThis.Node;
   const previousNodeFilter = globalThis.NodeFilter;
@@ -73,9 +72,9 @@ test("popup anchor follows the caret end rather than the backslash start", async
     dom.window.Range.prototype.getBoundingClientRect = function () {
       return { left: this.collapsed ? 200 : 100, top: 100, bottom: 120, height: 20 };
     };
-    const adapter = createEditorDom("#editor", document);
-    assert.ok(adapter.findTrigger());
-    assert.equal(adapter.getBounds().left, 200);
+    const anchor = findEditorAnchor("#editor", false, document);
+    assert.ok(anchor);
+    assert.equal(getEditorAnchorBounds(anchor).left, 200);
   } finally {
     globalThis.Node = previousNode;
     globalThis.NodeFilter = previousNodeFilter;

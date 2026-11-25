@@ -1,4 +1,4 @@
-interface EditorAnchor {
+export interface EditorAnchor {
   editor: HTMLElement;
   trigger: Range;
   query: string;
@@ -9,7 +9,7 @@ function containsRange(editor: HTMLElement, range: Range): boolean {
   return editor.isConnected && editor.contains(range.startContainer) && editor.contains(range.endContainer);
 }
 
-function findEditorAnchor(selector: string, isComposing: boolean, doc: Document): EditorAnchor | null {
+export function findEditorAnchor(selector: string, isComposing: boolean, doc: Document): EditorAnchor | null {
   const selection = doc.getSelection();
   if (!selection?.rangeCount || (!isComposing && !selection.isCollapsed)) return null;
 
@@ -49,38 +49,17 @@ function findEditorAnchor(selector: string, isComposing: boolean, doc: Document)
   return null;
 }
 
-function isValidAnchor(anchor: EditorAnchor | null): boolean {
+export function isValidAnchor(anchor: EditorAnchor | null): boolean {
   // Mail pages can rewrite the DOM and move live ranges while the popup is open.
   return !!anchor && containsRange(anchor.editor, anchor.trigger)
     && anchor.trigger.toString() === anchor.text;
 }
 
-/** Selection state belongs to the editor adapter, never to React state. */
-export function createEditorDom(selector: string, doc: Document) {
-  let anchor: EditorAnchor | null = null;
-  return {
-    clear() { anchor = null; },
-    matches(target: EventTarget | null): boolean {
-      return target instanceof Element && target.closest(selector) !== null;
-    },
-    hasTrigger(target: EventTarget | null): boolean {
-      const editor = target instanceof Element ? target.closest(selector) : null;
-      return /[\\₩]/.test(editor?.textContent ?? "");
-    },
-    findTrigger(composing = false) {
-      const found = findEditorAnchor(selector, composing, doc);
-      if (!found) return null;
-      anchor = found;
-      return { query: found.query, editorId: found.editor as object };
-    },
-    isInsertionValid(): boolean { return isValidAnchor(anchor); },
-    getBounds(): DOMRect | null {
-      if (!anchor?.editor.isConnected) return null;
-      // The trigger starts at the backslash; the animation must meet its caret end.
-      const caret = anchor.trigger.cloneRange();
-      caret.collapse(false);
-      const rect = caret.getBoundingClientRect();
-      return rect.height ? rect : anchor.editor.getBoundingClientRect();
-    },
-  };
+export function getEditorAnchorBounds(anchor: EditorAnchor | null): DOMRect | null {
+  if (!anchor?.editor.isConnected) return null;
+  // The trigger starts at the backslash; the animation must meet its caret end.
+  const caret = anchor.trigger.cloneRange();
+  caret.collapse(false);
+  const rect = caret.getBoundingClientRect();
+  return rect.height ? rect : anchor.editor.getBoundingClientRect();
 }
