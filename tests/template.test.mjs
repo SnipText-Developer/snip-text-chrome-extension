@@ -170,7 +170,7 @@ test("refresh requests fetch fresh templates and preserve the cache on failure",
   const originalFetch = globalThis.fetch;
   t.after(() => { globalThis.fetch = originalFetch; apiConfig.templatesUrl = ""; });
   const refresh = { src: "PAGE", dst: "BACKGROUND", method: "POST", path: "/template/refresh", data: {} };
-  const dashboard = { origin: "http://localhost:3000", url: "http://localhost:3000/templates", frameId: 0 };
+  const dashboard = { origin: "https://sniptext.kr", url: "https://sniptext.kr/templates", frameId: 0 };
   assert.equal((await router(refresh, sender)).statusCode, 400);
 
   apiConfig.templatesUrl = "http://localhost:8080/api/template";

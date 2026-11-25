@@ -109,7 +109,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
     return "(톤교정)작성한 본문";
   };
   let stop;
-  await act(async () => { stop = startPopup({ selector: "#editor", newTemplateUrl: "http://localhost:3000/templates/new", getTemplates, insertText: insertTemplate, correctTone, getEditorText }); });
+  await act(async () => { stop = startPopup({ selector: "#editor", newTemplateUrl: "https://sniptext.kr/templates/new", getTemplates, insertText: insertTemplate, correctTone, getEditorText }); });
   const host = document.querySelector("#snip-text-mini-popup");
   assert.equal(host.shadowRoot, null);
   t.after(async () => { await act(async () => { stop(); }); dom.window.close(); });
@@ -136,6 +136,9 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   }
   await open("/");
   assert.notEqual(host.dataset.open, "true");
+  await open("작성한 메일 본문.\\");
+  assert.equal(host.dataset.open, "true");
+  assert.equal(host.querySelectorAll('[role="option"]').length, 2);
   await open("\\일반");
   assert.equal(host.querySelectorAll('[role="option"]').length, 0);
   await open("\\안내");
@@ -155,7 +158,7 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   assert.equal(host.querySelectorAll('[role="option"]').length, 2);
   assert.match(host.querySelector('[role="option"]').textContent, /일반 본문/);
   assert.equal(host.querySelector("header").textContent, "최근 사용");
-  assert.equal(host.querySelector(".popup-footer a").href, "http://localhost:3000/templates/new");
+  assert.equal(host.querySelector(".popup-footer a").href, "https://sniptext.kr/templates/new");
   assert.ok(document.activeElement === editor);
   await act(async () => {
     for (const selector of [".popup", "header", '[role="listbox"]']) {

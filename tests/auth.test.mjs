@@ -110,22 +110,21 @@ test("dashboard authentication accepts only the allowed top-level origins and do
   const send = (source, method, path, data) =>
     routeDashboardMessage({ dst: "BACKGROUND", method, path, data }, source);
   const production = { origin: "https://sniptext.kr", url: "https://sniptext.kr/templates", frameId: 0 };
-  const local = { origin: "http://localhost:3000", url: "http://localhost:3000/", frameId: 0 };
   const token = { vendor: "GOOGLE", token: "dashboard-token" };
   for (const source of [
     { ...production, frameId: 1 },
     { ...production, id: "other-extension" },
     { ...production, url: "blob:https://sniptext.kr/document" },
     { ...production, url: "https://sniptext.kr.example/" },
-    { origin: "http://localhost:3001", url: "http://localhost:3001/", frameId: 0 },
+    { origin: "http://localhost:3000", url: "http://localhost:3000/", frameId: 0 },
   ]) {
     assert.equal((await send(source, "PUT", "/auth/token", token)).statusCode, 403);
   }
   assert.deepEqual(await send(production, "PUT", "/auth/token", token), { statusCode: 200, data: { vendor: "GOOGLE" } });
-  assert.deepEqual(await send(local, "GET", "/auth/status", {}), { statusCode: 200, data: { authenticated: true } });
-  assert.equal((await send(local, "GET", "/auth/token", token)).statusCode, 404);
+  assert.deepEqual(await send(production, "GET", "/auth/status", {}), { statusCode: 200, data: { authenticated: true } });
+  assert.equal((await send(production, "GET", "/auth/token", token)).statusCode, 404);
   assert.equal((await send(production, "GET", "/template/list", {})).statusCode, 404);
-  assert.deepEqual(await send(local, "DELETE", "/auth/token", { vendor: "GOOGLE" }), { statusCode: 200, data: { deleted: true } });
+  assert.deepEqual(await send(production, "DELETE", "/auth/token", { vendor: "GOOGLE" }), { statusCode: 200, data: { deleted: true } });
 });
 
 test("dashboard token changes notify open sidebars without including token data", async (t) => {

@@ -89,7 +89,7 @@ await sendMessage({
 
 사이드바를 열거나 다시 포커스하면 백그라운드에 저장된 유효한 API 토큰이 있는지 확인합니다. 토큰이 있으면 템플릿을 열고, 없으면 로그인 화면을 표시합니다.
 
-Google 또는 네이버 로그인 버튼을 누르면 새 탭에서 대시보드를 엽니다. 이동 주소는 `packages/sidebar/src/config.ts`의 `dashboardUrl`에서 설정합니다. 기본값은 `http://localhost:3000/`이며 로그인은 대시보드에서 진행합니다. 사이드바에서 바로 템플릿을 보려면 **템플릿 보기**를 선택합니다.
+Google 또는 네이버 로그인 버튼을 누르면 새 탭에서 대시보드를 엽니다. 이동 주소는 `packages/sidebar/src/config.ts`의 `dashboardUrl`에서 설정합니다. 기본값은 `https://sniptext.kr/`이며 로그인은 대시보드에서 진행합니다. 사이드바에서 바로 템플릿을 보려면 **템플릿 보기**를 선택합니다.
 
 ### 인증 토큰 CRUD
 

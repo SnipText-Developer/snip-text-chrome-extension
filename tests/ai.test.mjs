@@ -71,12 +71,12 @@ test("AI tone correction sends the stored editor text to the API and validates c
   await service.updateEditorStatus("GOOGLE", { text: "본문\\톤교정" });
   assert.equal((await router(request, content)).data.text, "(톤교정)본문");
   for (const command of ["\\톤", "\\톤교", "\\톤교정", "₩톤", "₩톤교", "₩톤교정"]) {
-    await service.updateEditorStatus("GOOGLE", { text: `본문${command}  ` });
-    assert.equal((await router(request, content)).data.text, "(톤교정)본문");
+    await service.updateEditorStatus("GOOGLE", { text: `본문${command}  뒤에 이어지는 본문\n마지막 줄` });
+    assert.equal((await router(request, content)).data.text, "(톤교정)본문  뒤에 이어지는 본문\n마지막 줄");
     await service.updateEditorStatus("GOOGLE", { text: command });
     assert.equal((await router(request, content)).statusCode, 400);
   }
-  for (const text of ["본문\\톤ㅇ", "본문\\톤교정안내", "본문/다른예약어", "\\톤교정 뒤에 본문"]) {
+  for (const text of ["본문\\톤ㅇ", "본문\\톤교정안내", "본문/다른예약어", "C:\\docs\\mail"]) {
     await service.updateEditorStatus("GOOGLE", { text });
     assert.equal((await router(request, content)).data.text, `(톤교정)${text}`);
   }
@@ -86,7 +86,7 @@ test("AI tone correction sends the stored editor text to the API and validates c
   assert.equal((await router(request, content)).statusCode, 400);
 
   const maxLengthText = `${"가".repeat(2998)} 🙂`;
-  await service.updateEditorStatus("GOOGLE", { text: maxLengthText + "\\톤교정  " });
+  await service.updateEditorStatus("GOOGLE", { text: maxLengthText + "\\톤교정" });
   assert.deepEqual(await router(request, content), {
     statusCode: 200,
     data: { text: `(톤교정)${maxLengthText}` },

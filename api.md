@@ -335,7 +335,7 @@ CR 단독, 탭, 기존 NBSP는 그대로 유지합니다. Range 삽입 중 예�
 - 빈 본문: `400`, `{ msg: "교정할 본문을 작성해주세요." }`
 - 에디터 상태 없음: `404`
 
-PAGE에서 `text`를 생략하거나 CONTENT에서 요청하면 observer가 BACKGROUND에 저장한 본문을 읽습니다. CONTENT 요청은 본문 끝의 `\톤`, `\톤교`, `\톤교정` 예약어와 뒤따르는 공백을 제외합니다. 백그라운드는 선택한 문체 코드와 본문을 `POST /api/v1/ai/tone-corrections`로 보내고 `result.correctedText`를 반환합니다. 에디터 본문은 사용자가 삽입을 선택할 때 변경됩니다. 라우터는 발신자 검증과 응답 변환을, 서비스는 입력 검증·본문 조회·예약어 제거·교정을 담당합니다.
+PAGE에서 `text`를 생략하거나 CONTENT에서 요청하면 observer가 BACKGROUND에 저장한 본문을 읽습니다. CONTENT 요청은 뒤에 공백, 줄바꿈 또는 본문 끝이 오는 `\톤`, `\톤교`, `\톤교정` 예약어만 제거하고, 나머지 본문과 줄바꿈은 유지합니다. `₩`로 시작하는 동일한 예약어도 제거합니다. 백그라운드는 선택한 문체 코드와 본문을 `POST /api/v1/ai/tone-corrections`로 보내고 `result.correctedText`를 반환합니다. 에디터 본문은 사용자가 삽입을 선택할 때 변경됩니다. 라우터는 발신자 검증과 응답 변환을, 서비스는 입력 검증·본문 조회·예약어 제거·교정을 담당합니다.
 
 ### GET `/editor/text`
 
@@ -351,7 +351,7 @@ BACKGROUND의 에디터 서비스에서 observer가 전달해 저장한 본문�
 
 ## 대시보드에서 백그라운드로 인증 메시지 보내기
 
-`https://sniptext.kr` 또는 `http://localhost:3000`의 최상위 페이지에서 대시보드 로그인 성공 후 호출합니다. `extensionId`는 Chrome에 설치된 Snip Text 확장 프로그램 ID입니다.
+`https://sniptext.kr`의 최상위 페이지에서 대시보드 로그인 성공 후 호출합니다. `extensionId`는 Chrome에 설치된 Snip Text 확장 프로그램 ID입니다.
 
 ```js
 chrome.runtime.sendMessage(extensionId, {
