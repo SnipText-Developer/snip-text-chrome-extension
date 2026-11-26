@@ -5,6 +5,30 @@ import { MiniPopup } from "./components/MiniPopup";
 
 export { getTemplateVariables } from "./utils/text";
 
+const pretendardStylesheet =
+  "https://cdnjs.cloudflare.com/ajax/libs/pretendard/1.3.9/static/pretendard.min.css";
+
+function ensurePretendardFont(document: Document): void {
+  let hasPretendard = false;
+  document.fonts?.forEach((font) => {
+    if (font.family.replace(/["']/g, "").trim().toLowerCase() === "pretendard") {
+      hasPretendard = true;
+    }
+  });
+  if (hasPretendard) return;
+
+  const existingLink = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+    .some((link) => link.getAttribute("href") === pretendardStylesheet);
+  if (existingLink) return;
+
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = pretendardStylesheet;
+  link.type = "text/css";
+  link.crossOrigin = "anonymous";
+  document.head.appendChild(link);
+}
+
 // One React root per content-script document; effects manage editor events.
 export function startPopup(options: StartPopupOptions | ConnectedPopupOptions): () => void {
   const { selector } = options;
@@ -13,6 +37,7 @@ export function startPopup(options: StartPopupOptions | ConnectedPopupOptions): 
   const host = document.createElement("div");
   host.id = "snip-text-mini-popup";
   document.documentElement.append(host);
+  ensurePretendardFont(host.ownerDocument);
   const root = createRoot(host);
   root.render(
     <MiniPopup

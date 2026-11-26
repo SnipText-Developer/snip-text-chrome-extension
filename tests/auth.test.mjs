@@ -105,7 +105,7 @@ test("auth status reports valid tokens without exposing their contents", async (
   }
 });
 
-test("dashboard authentication accepts only the allowed top-level origins and does not return tokens", async (t) => {
+test("dashboard authentication returns the Google token only to the top-level dashboard", async (t) => {
   t.after(async () => { await service.deleteOne("GOOGLE"); });
   const send = (source, method, path, data) =>
     routeDashboardMessage({ dst: "BACKGROUND", method, path, data }, source);
@@ -122,6 +122,10 @@ test("dashboard authentication accepts only the allowed top-level origins and do
   }
   assert.deepEqual(await send(production, "PUT", "/auth/token", token), { statusCode: 200, data: { vendor: "GOOGLE" } });
   assert.deepEqual(await send(production, "GET", "/auth/status", {}), { statusCode: 200, data: { authenticated: true } });
+  const dashboard = { ...production, url: "https://sniptext.kr/dashboard/templates" };
+  assert.deepEqual(await send(dashboard, "GET", "/auth/token", { vendor: "GOOGLE" }), { statusCode: 200, data: token });
+  assert.equal((await send(dashboard, "GET", "/auth/token", { vendor: "NAVER" })).statusCode, 404);
+  assert.equal((await send({ ...dashboard, frameId: 1 }, "GET", "/auth/token", token)).statusCode, 403);
   assert.equal((await send(production, "GET", "/auth/token", token)).statusCode, 404);
   assert.equal((await send(production, "GET", "/template/list", {})).statusCode, 404);
   assert.deepEqual(await send(production, "DELETE", "/auth/token", { vendor: "GOOGLE" }), { statusCode: 200, data: { deleted: true } });

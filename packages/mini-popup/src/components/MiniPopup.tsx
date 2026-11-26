@@ -23,11 +23,6 @@ export function MiniPopup({ selector, getTemplates, insertText, correctTone, get
 
   return (
     <>
-      <link
-        rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/pretendard/1.3.9/static/pretendard.min.css"
-        crossOrigin="anonymous"
-      />
       <style>{normalize + common + styles + listStyles}</style>
       {view && (
         <div className="popup-group" {...panelProps} {...state.popupEventProps}>
