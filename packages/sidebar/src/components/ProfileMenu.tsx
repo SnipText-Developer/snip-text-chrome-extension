@@ -42,7 +42,7 @@ export default function ProfileMenu({ onLogout }: { onLogout?: () => Promise<voi
         aria-controls={open ? menuId : undefined}
         aria-expanded={open}
         onClick={() => setOpen(!open)}>
-        <img className="template-brand" src="./favicon.svg" alt="" />
+        <img className="template-brand" src="./logo-192.png" alt="" />
       </button>
       {open && (
         <>

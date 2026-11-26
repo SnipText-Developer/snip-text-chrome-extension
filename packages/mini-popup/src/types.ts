@@ -10,6 +10,8 @@ export interface Template {
 }
 
 export interface StartPopupOptions {
+  googleLogoUrl?: string;
+  logoUrl?: string;
   loginUrl?: string;
   newTemplateUrl?: string;
   selector: string;
@@ -25,6 +27,8 @@ export interface PopupConnection {
 }
 
 export interface ConnectedPopupOptions extends PopupConnection {
+  googleLogoUrl?: string;
+  logoUrl?: string;
   loginUrl?: string;
   newTemplateUrl?: string;
   selector: string;

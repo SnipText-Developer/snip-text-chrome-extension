@@ -13,12 +13,8 @@
 }
 
 .login-logo {
-  margin-bottom: 30px;
-  color: #1947b8;
-  font-size: 80px;
-  font-weight: 900;
-  font-style: italic;
-  line-height: 1;
+  display: block;
+  margin: 0 auto 14px;
 }
 
 .login-intro h1 {

@@ -5,7 +5,7 @@ export default function LoginPage() {
   return (
     <section className="login-page" aria-labelledby="login-heading">
       <div className="login-content">
-        <div className="login-logo" aria-hidden="true">S</div>
+        <img className="login-logo" src="./logo-192.png" width={112} height={112} alt="" />
         <div className="login-intro">
           <h1 id="login-heading">저장한 문장, 간편하게 쓰세요</h1>
           <p>저장한 템플릿을<br />웹 입력창에서 단축어로 불러올 수 있어요</p>

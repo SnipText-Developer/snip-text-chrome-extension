@@ -48,7 +48,10 @@ module.exports = {
       inject: "body",
     }),
     new CopyWebpackPlugin({
-      patterns: [{ from: "public/manifest.json", to: "manifest.json" }],
+      patterns: [
+        { from: "public/manifest.json", to: "manifest.json" },
+        { from: "public/icons", to: "icons" },
+      ],
     }),
   ],
 };

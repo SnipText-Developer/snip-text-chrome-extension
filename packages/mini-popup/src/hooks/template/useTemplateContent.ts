@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { getTemplateContent } from "../utils/text";
+import { getTemplateContent } from "../../utils/text";
 
 export function useTemplateContent(
   content: string,

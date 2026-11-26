@@ -1,11 +1,10 @@
 import styles from "./TemplateVariablesForm.css?inline";
-import { useId, useLayoutEffect, useRef, useState } from "react";
-import { focusVariableInput, preventDefault, type MiniPopupDom } from "../dom/index";
+import type { ConnectPopupKeyboard } from "../hooks/popup/usePopupEventIsolation";
 import type { Template } from "../types";
-import { useTemplateContent } from "../hooks/useTemplateContent";
+import { useTemplateVariables } from "../hooks/template/useTemplateVariables";
 
 interface Props {
-  dom: MiniPopupDom;
+  connectKeyboard: ConnectPopupKeyboard;
   enabled: boolean;
   template: Template;
   busy?: boolean;
@@ -15,61 +14,28 @@ interface Props {
 
 const examples: Record<string, string> = { 날짜: "예: 11월 25일", 시간: "예: 오후 2시" };
 
-export function TemplateVariablesForm({ dom, enabled, template, busy, onCancel, onInsert }: Props) {
-  const [values, setValues] = useState<Record<string, string>>(() =>
-    Object.fromEntries(template.variables.map((name) => [name, ""])),
-  );
-  const [invalidVariable, setInvalidVariable] = useState<string>();
-  const errorId = useId();
-  const content = useTemplateContent(template.content, values);
-  const composing = useRef(false);
-  const root = useRef<HTMLFormElement>(null);
-  const handlers = useRef({ busy, onCancel });
-  handlers.current = { busy, onCancel };
-  useLayoutEffect(() => {
-    if (enabled && root.current) return dom.connectTemplateInput(root.current, () => handlers.current);
-  }, [dom, enabled]);
+export function TemplateVariablesForm(props: Props) {
+  const { template, busy } = props;
+  const { errorId, getField, formProps } = useTemplateVariables(props);
 
   return (
     <>
       <style>{styles}</style>
-      <form
-        ref={root}
-        noValidate
-        onCompositionStart={() => { composing.current = true; }}
-        onCompositionEnd={() => { composing.current = false; }}
-        onSubmit={(event) => {
-          preventDefault(event);
-          if (composing.current || busy) return;
-          const missing = template.variables.find((variable) => !values[variable]?.trim());
-          if (missing !== undefined) {
-            setInvalidVariable(missing);
-            focusVariableInput(root.current, missing);
-            return;
-          }
-          onInsert(content);
-        }}>
+      <form {...formProps}>
         <div className="list variables">
           <div className="fields">
             {template.variables.map((variable) => {
-              const invalid = variable === invalidVariable;
+              const { key, invalid, inputProps } = getField(variable);
               return (
                 <label key={variable}>
                   <span>{variable}</span>
                   <input
-                    name={variable}
+                    key={key}
+                    {...inputProps}
                     type="text"
                     required
                     disabled={busy}
-                    aria-invalid={invalid || undefined}
-                    aria-describedby={invalid ? errorId : undefined}
                     placeholder={Object.hasOwn(examples, variable) ? examples[variable] : `${variable} 입력`}
-                    value={values[variable] ?? ""}
-                    onInput={(event) => {
-                      const value = event.currentTarget.value;
-                      setValues((previous) => ({ ...previous, [variable]: value }));
-                      if (invalid && value.trim()) setInvalidVariable(undefined);
-                    }}
                   />
                   {invalid && <span id={errorId} className="field-error" role="alert">{variable} 값을 입력해 주세요.</span>}
                 </label>

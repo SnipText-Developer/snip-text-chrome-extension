@@ -2,7 +2,6 @@ import { createRoot } from "react-dom/client";
 import { createMiniPopupActions } from "./actions";
 import type { ConnectedPopupOptions, StartPopupOptions } from "./types";
 import { MiniPopup } from "./components/MiniPopup";
-import { createPopupHost, ensurePretendardFont } from "./dom/index";
 
 export { getTemplateVariables } from "./utils/text";
 
@@ -11,12 +10,15 @@ export function startPopup(options: StartPopupOptions | ConnectedPopupOptions): 
   const { selector } = options;
   const { getTemplates, insertText, correctTone, getEditorText } =
     "vendorName" in options ? createMiniPopupActions(options) : options;
-  const { element: host, remove } = createPopupHost();
-  ensurePretendardFont(host.ownerDocument);
+  const host = document.createElement("div");
+  host.id = "snip-text-mini-popup";
+  document.documentElement.append(host);
   const root = createRoot(host);
   root.render(
     <MiniPopup
       selector={selector}
+      googleLogoUrl={options.googleLogoUrl}
+      logoUrl={options.logoUrl}
       loginUrl={options.loginUrl}
       newTemplateUrl={options.newTemplateUrl}
       getTemplates={getTemplates}
@@ -31,10 +33,10 @@ export function startPopup(options: StartPopupOptions | ConnectedPopupOptions): 
     if (stopped) return;
     stopped = true;
     root.unmount();
-    remove();
+    host.remove();
   };
 }
 
 export type { Template, StartPopupOptions, ConnectedPopupOptions, PopupConnection } from "./types";
 
-export { useTemplateContent } from "./hooks/useTemplateContent";
+export { useTemplateContent } from "./hooks/template/useTemplateContent";

@@ -6,7 +6,13 @@
 
 #snip-text-mini-popup {
   position: fixed;
+  top: 0;
+  left: 0;
   z-index: 2147483647;
+}
+
+#snip-text-mini-popup .popup-group {
+  position: fixed;
   display: none;
   --snip-lamp-progress: 0;
   --lamp-angle: calc(180deg * (1 - var(--snip-lamp-progress)));
@@ -35,7 +41,8 @@
     opacity 0.5s ease, display 0.5s allow-discrete;
 }
 
-#snip-text-mini-popup[data-open="true"] {
+#snip-text-mini-popup .popup-group[data-open="true"] {
+  display: flex;
   --snip-lamp-progress: 1;
   opacity: 1;
   transition-duration: 0.3s;
@@ -47,17 +54,17 @@
   to { transform: none; clip-path: none; }
 }
 
-#snip-text-mini-popup[data-open="false"] { pointer-events: none; }
+#snip-text-mini-popup .popup-group[data-open="false"] { pointer-events: none; }
 
 @starting-style {
-  #snip-text-mini-popup[data-open="true"] {
+  #snip-text-mini-popup .popup-group[data-open="true"] {
     --snip-lamp-progress: 0;
     opacity: 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #snip-text-mini-popup {
+  #snip-text-mini-popup .popup-group {
     transition: none;
     animation: none;
     transform: none;
@@ -116,58 +123,7 @@
 
 #snip-text-mini-popup .popup-footer a:hover { text-decoration: underline; }
 
-#snip-text-mini-popup .login-intro {
-  flex-shrink: 1;
-  overflow: auto;
-  text-align: center;
-  font-weight: 400;
-}
-
-#snip-text-mini-popup .login-logo {
-  margin: 4px 0 10px;
-  color: #1947b8;
-  font-size: 44px;
-  font-weight: 900;
-  font-style: italic;
-  line-height: 1;
-}
-
-#snip-text-mini-popup .login-intro h2 {
-  margin: 0;
-  color: #171c27;
-  font-size: 16px;
-  font-weight: 800;
-  word-break: keep-all;
-}
-
-#snip-text-mini-popup .login-intro p {
-  margin: 6px 0 0;
-  word-break: keep-all;
-}
-
-#snip-text-mini-popup .login-button {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  min-height: 40px;
-  margin: 12px 6px 16px;
-  border: 1px solid #d5d5d5;
-  border-radius: 9px;
-  background: #fff;
-  color: #111;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-#snip-text-mini-popup .login-button:hover {
-  background: #f7f8fa;
-  border-color: #969ca7;
-}
-
 #snip-text-mini-popup .popup-group {
-  display: flex;
   align-items: flex-start;
   gap: 8px;
   width: max-content;
@@ -188,11 +144,12 @@
 }
 
 #snip-text-mini-popup .tone-menu .tone-options[role="listbox"] {
-  display: flex;
-  flex-wrap: wrap;
-  align-content: flex-start;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: start;
   gap: 5px;
   padding-bottom: 8px;
+  scroll-padding-bottom: 8px;
 }
 
 #snip-text-mini-popup .tone-menu .tone-options button[role="option"] {
