@@ -18,6 +18,7 @@ test("mini-popup keeps imperative DOM access in the entry point and designated h
         assert.doesNotMatch(source, /\b(?:document|window)\s*\./, label + ": global DOM access");
       }
       const allowedOperations = {
+        "index.tsx": /\.querySelectorAll\s*\(/g,
         "hooks/editor/editor-anchor.ts": /\.(?:closest|getBoundingClientRect)\s*\(/g,
         "hooks/editor/useEditorAnchor.ts": /\.(?:closest|focus)\s*\(/g,
         "hooks/editor/useEditorEvents.ts": /\.addEventListener\s*\(/g,

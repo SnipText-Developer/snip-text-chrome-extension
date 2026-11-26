@@ -111,6 +111,9 @@ test("React popup preserves selection, variables, IME, cancellation and stale-re
   let stop;
   await act(async () => { stop = startPopup({ selector: "#editor", newTemplateUrl: "https://sniptext.kr/templates/new", getTemplates, insertText: insertTemplate, correctTone, getEditorText }); });
   const host = document.querySelector("#snip-text-mini-popup");
+  const fontLinks = document.querySelectorAll('link[rel="stylesheet"][href*="pretendard"]');
+  assert.equal(fontLinks.length, 1);
+  assert.equal(fontLinks[0].parentElement, document.head);
   assert.equal(host.shadowRoot, null);
   const panel = () => host.querySelector(".popup-group");
   t.after(async () => { await act(async () => { stop(); }); dom.window.close(); });
