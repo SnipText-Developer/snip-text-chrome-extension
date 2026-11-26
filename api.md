@@ -371,7 +371,8 @@ chrome.runtime.sendMessage(extensionId, {
 | 메서드와 경로 | 요청 `data` | 성공 응답 `data` |
 | --- | --- | --- |
 | `GET /auth/status` | `{}` | `{ authenticated }` |
+| `GET /auth/token` | `{ vendor: "GOOGLE" }` | `{ vendor, token }` |
 | `PUT /auth/token` | `{ vendor, token, expiresAt? }` | `{ vendor }` |
 | `DELETE /auth/token` | `{ vendor }` | `{ deleted }` |
 
-`vendor`는 `GOOGLE` 또는 `NAVER`이며 `expiresAt`은 epoch 밀리초입니다. 저장에는 기존 토큰 만료 정책을 적용합니다.
+토큰 조회는 최상위 `https://sniptext.kr/dashboard` 및 하위 경로에서만 허용하며, 저장된 Google 토큰이 없거나 만료되면 404를 반환합니다. 저장 및 삭제의 `vendor`는 `GOOGLE` 또는 `NAVER`이며 `expiresAt`은 epoch 밀리초입니다. 저장에는 기존 토큰 만료 정책을 적용합니다.

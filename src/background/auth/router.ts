@@ -33,7 +33,10 @@ export async function router(
     if (req.path === "/auth/token") {
       const vendor = req.data && typeof req.data === "object" && "vendor" in req.data ? req.data.vendor : undefined;
       if (req.method === "GET") {
-        if (!pageSender) return;
+        const dashboardPath = dashboardSender && sender.url ? new URL(sender.url).pathname : "";
+        const canReadDashboardToken =
+          vendor === "GOOGLE" && (dashboardPath === "/dashboard" || dashboardPath.startsWith("/dashboard/"));
+        if (!pageSender && !canReadDashboardToken) return;
         const token = await service.read(vendor);
         return token
           ? { statusCode: 200, data: token }
